@@ -161,7 +161,7 @@ namespace Smuxi.Engine.VBulletinChatbox
         {
             Trace.Call(cmd);
 
-            if (!cmd.IsCommand) {
+            if (!cmd.IsCommand || cmd.Command == "me") {
                 HttpWebRequest request = HttpWebRequest.Create(new Uri(ForumUri, "misc.php")) as HttpWebRequest;
                 request.KeepAlive = false;
                 request.Method = "POST";
