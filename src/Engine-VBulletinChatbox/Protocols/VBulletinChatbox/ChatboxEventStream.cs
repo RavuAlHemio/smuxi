@@ -145,39 +145,6 @@ namespace Smuxi.Engine.VBulletinChatbox
             return ret;
         }
 
-        static void ParseAppendMessageBody(MessageBuilder bldr, HtmlNode topNode) {
-            foreach (HtmlNode subnode in topNode.ChildNodes) {
-                if (subnode.NodeType == HtmlNodeType.Text) {
-                    var theText = subnode.InnerText;
-                    if (bldr.IsEmpty) {
-                        // beginning of message -- remove initial spaces
-                        theText = theText.TrimStart();
-                    }
-                    bldr.AppendText(theText);
-                } else if (subnode.NodeType == HtmlNodeType.Element) {
-                    if (subnode.Name.ToLower() == "img") {
-                        // image? append it
-                        var src = subnode.GetAttributeValue("src", "");
-                        var alt = subnode.GetAttributeValue("title", "");
-                        bldr.Append(new ImageMessagePartModel(src, alt));
-                    } else if (subnode.Name.ToLower() == "a") {
-                        // link? URL
-                        var url = subnode.GetAttributeValue("href", "");
-                        var text = subnode.InnerText;
-                        bldr.AppendUrl(url, text);
-                    } else if (subnode.Name.ToLower() == "font") {
-                        // formatting -- ignore
-                        ParseAppendMessageBody(bldr, subnode);
-                    } else {
-                        // unknown element
-                        bldr.AppendErrorText("unknown element {0}", subnode.Name);
-                    }
-                } else {
-                    bldr.AppendErrorText("unexpected node of type {0}", subnode.NodeType.ToString());
-                }
-            }
-        }
-
         void FetchNewMessages()
         {
             var req = HttpWebRequest.Create(MessagesUri) as HttpWebRequest;
@@ -245,9 +212,7 @@ namespace Smuxi.Engine.VBulletinChatbox
                     }
                 }
                 outputBuilder.AppendSenderPrefix(person);
-
-                // get the message body
-                ParseAppendMessageBody(outputBuilder, msg.SelectSingleNode("./td[2]"));
+                outputBuilder.AppendHtmlMessage(msg.SelectSingleNode("./td[2]").InnerHtml.Trim());
 
                 newMessages.Add(outputBuilder.ToMessage());
             }
