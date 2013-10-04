@@ -220,7 +220,7 @@ namespace Smuxi.Engine.VBulletinChatbox
                 msgId = msgIdMaybe.Value;
                 userId = userIdMaybe.Value;
 
-                if (LastMessage >= msgId && LastMessage - msgId > 3000) {
+                if (LastMessage >= msgId && LastMessage - msgId < 3000) {
                     // seen this already
                     continue;
                 }
