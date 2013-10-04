@@ -27,6 +27,7 @@ using System.IO;
 using System.Xml;
 using System.Web;
 using Smuxi.Common;
+using HtmlAgilityPack;
 
 namespace Smuxi.Engine
 {
@@ -527,10 +528,10 @@ namespace Smuxi.Engine
             return;
         }
         
-        void ParseStyle(XmlNode style, TextMessagePartModel submodel)
+        void ParseStyle(string style, TextMessagePartModel submodel)
         {
             if (style == null) return;
-            var properties = style.InnerText.Split(';');
+            var properties = style.Split(';');
             foreach (string property in properties) {
                 var colonpos = property.IndexOf(':');
                 if (colonpos == -1) continue;
@@ -584,7 +585,7 @@ namespace Smuxi.Engine
             }
         }
         
-        void ParseHtml(XmlNode node, TextMessagePartModel model)
+        void ParseHtml(HtmlNode node, TextMessagePartModel model)
         {
             TextMessagePartModel submodel;
             string nodetype = node.Name.ToLower();
@@ -592,7 +593,7 @@ namespace Smuxi.Engine
                 submodel = new UrlMessagePartModel(model);
             } else if (nodetype == "a") {
                 submodel = new UrlMessagePartModel(model);
-                (submodel as UrlMessagePartModel).Url = node.Attributes.GetNamedItem("href").Value;
+                (submodel as UrlMessagePartModel).Url = node.GetAttributeValue("href", "");
             } else {
                 submodel = new TextMessagePartModel(model);
             }
@@ -612,10 +613,10 @@ namespace Smuxi.Engine
                     break;
             }
             if (node.Attributes != null) {
-                ParseStyle(node.Attributes.GetNamedItem("style"), submodel);
+                ParseStyle(node.GetAttributeValue("style", ""), submodel);
             }
             if (node.HasChildNodes) {
-                foreach (XmlNode child in node.ChildNodes) {
+                foreach (var child in node.ChildNodes) {
                     // clone this model
                     TextMessagePartModel nextmodel;
                     if (submodel is UrlMessagePartModel) {
@@ -630,9 +631,19 @@ namespace Smuxi.Engine
                 if (nodetype == "br") {
                     AppendText("\n");
                 } else if (nodetype == "img") {
-                    AppendUrl(node.Attributes.GetNamedItem("src").Value, "[image placeholder - UNIMPLEMENTED]");
+                    var alt = node.GetAttributeValue("alt", "");
+                    if (string.IsNullOrEmpty(alt)) {
+                        alt = node.GetAttributeValue("title", "");
+                    }
+                    if (string.IsNullOrEmpty(alt)) {
+                        alt = "<Image>";
+                    } else {
+                        alt = "<Image: " + alt + ">";
+                    }
+                    AppendUrl(node.GetAttributeValue("src", ""), alt);
                 } else {
-                    model.Text = HttpUtility.HtmlDecode(node.Value);
+                    model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
+                    model.Text = HttpUtility.HtmlDecode(model.Text);
                     AppendText(model);
                 }
             }
@@ -641,7 +652,7 @@ namespace Smuxi.Engine
         public virtual MessageBuilder AppendHtmlMessage(string html)
         {
             html = NormalizeNewlines(html);
-            XmlDocument doc = new XmlDocument();
+            var doc = new HtmlDocument();
             try {
                 // wrap in div to prevent messages beginning with text from failing "to be xml"
                 doc.Load(new StringReader("<html>"+html+"</html>"));
@@ -652,7 +663,7 @@ namespace Smuxi.Engine
                 AppendText(html);
                 return this;
             }
-            ParseHtml(doc, new TextMessagePartModel());
+            ParseHtml(doc.DocumentNode, new TextMessagePartModel());
             return this;
         }
 
