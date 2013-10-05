@@ -112,17 +112,9 @@ namespace Smuxi.Engine.VBulletinChatbox
             // create the client
             BoxClient = new CookieJarWebClient();
             BoxClient.Encoding = Encoding.GetEncoding("ISO-8859-1");
-            var postValues = new System.Collections.Specialized.NameValueCollection();
 
-            // login to forum
-            postValues.Add("vb_login_username", server.Username);
-            postValues.Add("vb_login_password", server.Password);
-            postValues.Add("cookieuser", "1");
-            postValues.Add("s", "");
-            postValues.Add("do", "login");
-            postValues.Add("vb_login_md5password", "");
-            postValues.Add("vb_login_md5password_utf", "");
-            BoxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
+            LogIn();
+            UpdateSecurityToken();
 
             msg = string.Format(_("Connected to VBulletin Chatbox at {0}"), ForumUri);
             if (fm != null) {
@@ -131,13 +123,27 @@ namespace Smuxi.Engine.VBulletinChatbox
             bld = CreateMessageBuilder().AppendEventPrefix().AppendText(msg);
             Session.AddMessageToChat(BoxChat, bld.ToMessage());
 
-            UpdateSecurityToken();
-
             EventStream = new ChatboxEventStream(BoxChat, ForumUri, BoxClient.CookieJar);
             EventStream.MessageReceived += ShowMessage;
             EventStream.ErrorReceived += ShowError;
             EventStream.UserAppeared += AddUser;
             EventStream.Start();
+        }
+
+        void LogIn()
+        {
+            Trace.Call();
+
+            // login to forum
+            var postValues = new System.Collections.Specialized.NameValueCollection();
+            postValues.Add("vb_login_username", Username);
+            postValues.Add("vb_login_password", Password);
+            postValues.Add("cookieuser", "1");
+            postValues.Add("s", "");
+            postValues.Add("do", "login");
+            postValues.Add("vb_login_md5password", "");
+            postValues.Add("vb_login_md5password_utf", "");
+            BoxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
         }
 
         void UpdateSecurityToken()
@@ -170,44 +176,136 @@ namespace Smuxi.Engine.VBulletinChatbox
             }
         }
 
+        void TrySend(string message, int attempt)
+        {
+            Trace.Call(message, attempt);
+
+            HttpWebRequest request = HttpWebRequest.Create(new Uri(ForumUri, "misc.php")) as HttpWebRequest;
+            request.KeepAlive = false;
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.CookieContainer = BoxClient.CookieJar;
+
+            string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage=", SecurityToken);
+            foreach (char c in message) {
+                if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_' || c == '.') {
+                    requestData += c;
+                } else if (c <= (char)0xFF) {
+                    foreach (byte b in Encoding.GetEncoding("ISO-8859-1").GetBytes(c.ToString())) {
+                        requestData += string.Format("%{0:X2}", b);
+                    }
+                } else {
+                    // the Chatbox allows (URL-encoded) HTML escapes for this
+                    requestData += string.Format("%26%23{0}%3B", (int)c);
+                }
+            }
+            byte[] requestBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(requestData);
+
+            request.ContentLength = requestBytes.Length;
+            request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
+            var resp = request.GetResponse() as HttpWebResponse;
+
+            using (var sr = new StreamReader(resp.GetResponseStream())) {
+                sr.ReadToEnd();
+            }
+
+            if ((int)resp.StatusCode != 200) {
+                // something failed
+                switch (attempt) {
+                    case 0:
+                        // fetch a new token and try again
+                        UpdateSecurityToken();
+                        TrySend(message, 1);
+                        break;
+                    case 1:
+                        // log in anew, fetch a new token and try again
+                        LogIn();
+                        UpdateSecurityToken();
+                        TrySend(message, 2);
+                        break;
+                    default:
+                        // guess not
+                        var msg = CreateMessageBuilder()
+                                  .AppendErrorText(_("Failed to send message; HTTP error code: [{0}] {1}"), (int)resp.StatusCode, resp.StatusCode)
+                                  .ToMessage();
+                        Session.AddMessageToChat(BoxChat, msg);
+                        break;
+                }
+                if (attempt == 0) {
+                    // fetch a new token and try again
+                } else {
+                    // guess not
+                    var msg = CreateMessageBuilder()
+                              .AppendErrorText(_("Failed to send message; HTTP error code: [{0}] {1}"), (int)resp.StatusCode, resp.StatusCode)
+                              .ToMessage();
+                    Session.AddMessageToChat(BoxChat, msg);
+                }
+            }
+        }
+
+        void CommandSend(CommandModel cmd)
+        {
+            Trace.Call(cmd);
+
+            TrySend(cmd.Data, 0);
+        }
+
+        void CommandRelogin(CommandModel cmd)
+        {
+            Trace.Call(cmd);
+
+            LogIn();
+        }
+
+        void CommandRetoken(CommandModel cmd)
+        {
+            Trace.Call(cmd);
+
+            UpdateSecurityToken();
+        }
+
+        void CommandHelp(CommandModel cmd)
+        {
+            Trace.Call(cmd);
+
+            var builder = CreateMessageBuilder();
+            builder.AppendEventPrefix();
+            // TRANSLATOR: the line below is used as a section header
+            // for a list of commands
+            builder.AppendHeader(_("VBulletin Chatbox Commands"));
+            Session.AddMessageToFrontend(cmd, builder.ToMessage());
+
+            string[] help = {
+                "help",
+                "me",
+                "relogin",
+                "retoken"
+            };
+
+            foreach (var line in help) {
+                builder = CreateMessageBuilder();
+                builder.AppendEventPrefix();
+                builder.AppendText(line);
+                Session.AddMessageToFrontend(cmd, builder.ToMessage());
+            }
+        }
+
         public override bool Command(CommandModel cmd)
         {
             Trace.Call(cmd);
 
             if (!cmd.IsCommand || cmd.Command == "me") {
-                HttpWebRequest request = HttpWebRequest.Create(new Uri(ForumUri, "misc.php")) as HttpWebRequest;
-                request.KeepAlive = false;
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded";
-                request.CookieContainer = BoxClient.CookieJar;
-
-                string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage=", SecurityToken);
-                foreach (char c in cmd.Data) {
-                    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_' || c == '.') {
-                        requestData += c;
-                    } else {
-                        foreach (byte b in Encoding.GetEncoding("ISO-8859-1").GetBytes(c.ToString())) {
-                            requestData += string.Format("%{0:X2}", b);
-                        }
-                    }
-                }
-                byte[] requestBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(requestData);
-
-                request.ContentLength = requestBytes.Length;
-                request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
-                var resp = request.GetResponse();
-
-                using (var sr = new StreamReader(resp.GetResponseStream())) {
-                    sr.ReadToEnd();
-                }
-
-                return true;
+                CommandSend(cmd);
             } else if (cmd.Command == "help") {
-                // no commands, but the frontend and engine have some
-                return true;
+                CommandHelp(cmd);
+            } else if (cmd.Command == "retoken") {
+                CommandRetoken(cmd);
+                UpdateSecurityToken();
+            } else {
+                return false;
             }
 
-            return false;
+            return true;
         }
 
         public override void Reconnect(FrontendManager fm)
