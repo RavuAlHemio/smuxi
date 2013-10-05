@@ -41,6 +41,8 @@ namespace Smuxi.Engine.VBulletinChatbox
         CookieContainer CookieCrate { get; set; }
         ChatboxEventStream EventStream { get; set; }
         string SecurityToken { get; set; }
+        string Username { get; set; }
+        string Password { get; set; }
 
         public override ChatModel Chat {
             get {
@@ -67,23 +69,32 @@ namespace Smuxi.Engine.VBulletinChatbox
 
         void ShowMessage(object sender, MessageReceivedEventArgs mrea)
         {
+            Trace.Call(sender, mrea);
+
             Session.AddMessageToChat(BoxChat, mrea.Message);
         }
 
         void ShowError(object sender, ErrorReceivedEventArgs erea)
         {
+            Trace.Call(sender, erea);
+
             var msg = CreateMessageBuilder().AppendErrorText(_("Error reading from stream: {0}"), erea.HttpResponseCode).ToMessage();
             Session.AddMessageToChat(BoxChat, msg);
         }
 
         void AddUser(object sender, UserAppearedEventArgs uaea)
         {
+            Trace.Call(sender, uaea);
+
             Session.AddPersonToGroupChat(BoxChat, uaea.Person);
         }
 
         public override void Connect(FrontendManager fm, ServerModel server)
         {
             Trace.Call(fm, server);
+
+            Username = server.Username;
+            Password = server.Password;
 
             ForumUri = new Uri(server.Hostname);
             BoxChat = new GroupChatModel(ForumUri.ToString(), "VBCB " + ForumUri, this);
@@ -131,6 +142,8 @@ namespace Smuxi.Engine.VBulletinChatbox
 
         void UpdateSecurityToken()
         {
+            Trace.Call();
+
             var req = HttpWebRequest.Create(new Uri(ForumUri, "misc.php?do=cchatbox")) as HttpWebRequest;
             req.CookieContainer = BoxClient.CookieJar;
             var res = req.GetResponse() as HttpWebResponse;
