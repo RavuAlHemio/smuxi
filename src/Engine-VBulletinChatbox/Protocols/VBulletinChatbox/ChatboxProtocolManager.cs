@@ -35,6 +35,7 @@ namespace Smuxi.Engine.VBulletinChatbox
         static readonly log4net.ILog Logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 #endif
 
+        FrontendManager Frontend { get; set; }
         Uri ForumUri { get; set; }
         GroupChatModel BoxChat { get; set; }
         CookieJarWebClient BoxClient { get; set; }
@@ -95,6 +96,7 @@ namespace Smuxi.Engine.VBulletinChatbox
 
             Username = server.Username;
             Password = server.Password;
+            Frontend = fm;
 
             ForumUri = new Uri(server.Hostname);
             BoxChat = new GroupChatModel(ForumUri.ToString(), "VBCB " + ForumUri, this);
@@ -102,12 +104,6 @@ namespace Smuxi.Engine.VBulletinChatbox
             BoxChat.ApplyConfig(Session.UserConfig);
             Session.AddChat(BoxChat);
             Session.SyncChat(BoxChat);
-            var msg = string.Format(_("Connecting to VBulletin Chatbox at {0}..."), ForumUri);
-            if (fm != null) {
-                fm.SetStatus(msg);
-            }
-            var bld = CreateMessageBuilder().AppendEventPrefix().AppendText(msg);
-            Session.AddMessageToChat(BoxChat, bld.ToMessage());
 
             // create the client
             BoxClient = new CookieJarWebClient();
@@ -116,13 +112,6 @@ namespace Smuxi.Engine.VBulletinChatbox
             LogIn();
             UpdateSecurityToken();
 
-            msg = string.Format(_("Connected to VBulletin Chatbox at {0}"), ForumUri);
-            if (fm != null) {
-                fm.SetStatus(msg);
-            }
-            bld = CreateMessageBuilder().AppendEventPrefix().AppendText(msg);
-            Session.AddMessageToChat(BoxChat, bld.ToMessage());
-
             EventStream = new ChatboxEventStream(BoxChat, ForumUri, Username, BoxClient.CookieJar);
             EventStream.MessageReceived += ShowMessage;
             EventStream.ErrorReceived += ShowError;
@@ -130,9 +119,20 @@ namespace Smuxi.Engine.VBulletinChatbox
             EventStream.Start();
         }
 
+        void OutputStatusMessage(string message)
+        {
+            if (Frontend != null) {
+                Frontend.SetStatus(message);
+            }
+            var bld = CreateMessageBuilder().AppendEventPrefix().AppendText(message);
+            Session.AddMessageToChat(BoxChat, bld.ToMessage());
+        }
+
         void LogIn()
         {
             Trace.Call();
+
+            OutputStatusMessage(string.Format(_("Logging in to VBulletin Chatbox at {0}..."), ForumUri));
 
             // login to forum
             var postValues = new System.Collections.Specialized.NameValueCollection();
@@ -144,11 +144,15 @@ namespace Smuxi.Engine.VBulletinChatbox
             postValues.Add("vb_login_md5password", "");
             postValues.Add("vb_login_md5password_utf", "");
             BoxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
+
+            OutputStatusMessage(_("Logged in."));
         }
 
         void UpdateSecurityToken()
         {
             Trace.Call();
+
+            OutputStatusMessage(_("Fetching security token..."));
 
             var req = HttpWebRequest.Create(new Uri(ForumUri, "misc.php?do=cchatbox")) as HttpWebRequest;
             req.CookieContainer = BoxClient.CookieJar;
@@ -174,6 +178,8 @@ namespace Smuxi.Engine.VBulletinChatbox
                     SecurityToken = keypair.Substring("amp;securitytoken=".Length);
                 }
             }
+
+            OutputStatusMessage(_("Security token fetched."));
         }
 
         void TrySend(string message, int attempt)
