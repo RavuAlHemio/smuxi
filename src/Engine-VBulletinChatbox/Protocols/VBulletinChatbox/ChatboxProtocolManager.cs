@@ -255,6 +255,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             Trace.Call(cmd);
 
             LogIn();
+            UpdateSecurityToken();
         }
 
         void CommandRetoken(CommandModel cmd)
@@ -298,9 +299,10 @@ namespace Smuxi.Engine.VBulletinChatbox
                 CommandSend(cmd);
             } else if (cmd.Command == "help") {
                 CommandHelp(cmd);
+            } else if (cmd.Command == "relogin") {
+                CommandRelogin(cmd);
             } else if (cmd.Command == "retoken") {
                 CommandRetoken(cmd);
-                UpdateSecurityToken();
             } else {
                 return false;
             }
