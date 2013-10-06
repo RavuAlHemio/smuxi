@@ -153,7 +153,7 @@ namespace Smuxi.Engine.VBulletinChatbox
 
             OutputStatusMessage(_("Fetching security token..."));
 
-            var req = HttpWebRequest.Create(new Uri(ForumUri, "misc.php?do=cchatbox")) as HttpWebRequest;
+            var req = HttpWebRequest.Create(new Uri(ForumUri, "faq.php")) as HttpWebRequest;
             req.CookieContainer = BoxClient.CookieJar;
             var res = req.GetResponse() as HttpWebResponse;
             string gotthis;
@@ -168,15 +168,9 @@ namespace Smuxi.Engine.VBulletinChatbox
             var doc = new HtmlDocument();
             doc.LoadHtml(gotthis);
 
-            // find chatbox form and extract its action
-            var cbform = doc.DocumentNode.SelectSingleNode("//form[contains(@action,\"securitytoken=\")]");
-            var cbaction = cbform.GetAttributeValue("action", "");
-            // find the token
-            foreach (var keypair in cbaction.Split('&')) {
-                if (keypair.StartsWith("amp;securitytoken=")) {
-                    SecurityToken = keypair.Substring("amp;securitytoken=".Length);
-                }
-            }
+            // find any form's security token field
+            var tokin = doc.DocumentNode.SelectSingleNode("//input[@name=\"securitytoken\"]");
+            SecurityToken = tokin.GetAttributeValue("value", "");
 
             OutputStatusMessage(_("Security token fetched."));
         }
