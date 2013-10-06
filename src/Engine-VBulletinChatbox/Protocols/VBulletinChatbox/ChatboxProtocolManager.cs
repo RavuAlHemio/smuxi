@@ -276,7 +276,6 @@ namespace Smuxi.Engine.VBulletinChatbox
             Trace.Call(cmd);
 
             var builder = CreateMessageBuilder();
-            builder.AppendEventPrefix();
             // TRANSLATOR: the line below is used as a section header
             // for a list of commands
             builder.AppendHeader(_("VBulletin Chatbox Commands"));
