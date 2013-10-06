@@ -75,16 +75,18 @@ namespace Smuxi.Engine.VBulletinChatbox
         CookieContainer CookieJar { get; set; }
         ulong LastMessage { get; set; }
         bool StopNow { get; set; }
+        string MyUsername { get; set; }
         Dictionary<ulong, ChatboxPersonModel> Users { get; set; }
         Thread WorkerThread { get; set; }
 
-        public ChatboxEventStream(ChatModel chat, Uri forumUri, CookieContainer cookieJar)
+        public ChatboxEventStream(ChatModel chat, Uri forumUri, string myUsername, CookieContainer cookieJar)
         {
             Chat = chat;
             MessagesUri = new Uri(forumUri, "misc.php?show=ccbmessages");
             CookieJar = cookieJar;
             LastMessage = 0;
             StopNow = false;
+            MyUsername = myUsername;
             Users = new Dictionary<ulong, ChatboxPersonModel>();
         }
 
@@ -171,7 +173,6 @@ namespace Smuxi.Engine.VBulletinChatbox
             foreach (HtmlNode msg in doc.DocumentNode.SelectNodes("/messages/tr")) {
                 ulong msgId;
                 ulong userId;
-                MessageBuilder outputBuilder = new MessageBuilder();
 
                 // pick out the first td (message and user data)
                 var metaTd = msg.SelectSingleNode("./td[1]");
@@ -207,9 +208,19 @@ namespace Smuxi.Engine.VBulletinChatbox
                                                     nick, Chat.ProtocolManager);
                     Users [userId] = person;
 
+                    if (nick == MyUsername) {
+                        person.IdentityNameColored.ForegroundColor = new TextColor(0, 0, 255);
+                        person.IdentityNameColored.BackgroundColor = TextColor.None;
+                        person.IdentityNameColored.Bold = true;
+                    }
+
                     if (UserAppeared != null) {
                         UserAppeared(this, new UserAppearedEventArgs(Chat, person));
                     }
+                }
+                var outputBuilder = new MessageBuilder();
+                if (nick == MyUsername) {
+                    outputBuilder.Me = person;
                 }
                 outputBuilder.AppendSenderPrefix(person);
                 outputBuilder.AppendHtmlMessage(msg.SelectSingleNode("./td[2]").InnerHtml.Trim());

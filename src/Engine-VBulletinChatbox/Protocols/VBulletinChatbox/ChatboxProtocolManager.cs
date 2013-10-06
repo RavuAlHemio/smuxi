@@ -123,7 +123,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             bld = CreateMessageBuilder().AppendEventPrefix().AppendText(msg);
             Session.AddMessageToChat(BoxChat, bld.ToMessage());
 
-            EventStream = new ChatboxEventStream(BoxChat, ForumUri, BoxClient.CookieJar);
+            EventStream = new ChatboxEventStream(BoxChat, ForumUri, Username, BoxClient.CookieJar);
             EventStream.MessageReceived += ShowMessage;
             EventStream.ErrorReceived += ShowError;
             EventStream.UserAppeared += AddUser;
