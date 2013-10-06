@@ -39,7 +39,6 @@ namespace Smuxi.Engine.VBulletinChatbox
         Uri ForumUri { get; set; }
         GroupChatModel BoxChat { get; set; }
         CookieJarWebClient BoxClient { get; set; }
-        CookieContainer CookieCrate { get; set; }
         ChatboxEventStream EventStream { get; set; }
         string SecurityToken { get; set; }
         string Username { get; set; }
@@ -236,15 +235,6 @@ namespace Smuxi.Engine.VBulletinChatbox
                                   .ToMessage();
                         Session.AddMessageToChat(BoxChat, msg);
                         break;
-                }
-                if (attempt == 0) {
-                    // fetch a new token and try again
-                } else {
-                    // guess not
-                    var msg = CreateMessageBuilder()
-                              .AppendErrorText(_("Failed to send message; HTTP error code: [{0}] {1}"), (int)resp.StatusCode, resp.StatusCode)
-                              .ToMessage();
-                    Session.AddMessageToChat(BoxChat, msg);
                 }
             }
         }
