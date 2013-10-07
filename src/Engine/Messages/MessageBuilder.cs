@@ -641,6 +641,13 @@ namespace Smuxi.Engine
                         alt = "<Image: " + alt + ">";
                     }
                     AppendUrl(node.GetAttributeValue("src", ""), alt);
+                } else if (nodetype == "embed") {
+                    var src = node.GetAttributeValue("src", "");
+                    if (string.IsNullOrEmpty(src)) {
+                        AppendText("<Embed>");
+                    } else {
+                        AppendUrl(src, "<Embed: " + src + ">");
+                    }
                 } else {
                     model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
                     model.Text = HttpUtility.HtmlDecode(model.Text);
