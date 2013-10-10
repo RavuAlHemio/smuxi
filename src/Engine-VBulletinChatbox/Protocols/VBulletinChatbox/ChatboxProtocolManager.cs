@@ -233,11 +233,26 @@ namespace Smuxi.Engine.VBulletinChatbox
             }
         }
 
+        void CloseTheChat()
+        {
+            Trace.Call();
+
+            Session.RemoveChat(BoxChat);
+
+            if (EventStream != null) {
+                EventStream.Dispose();
+            }
+        }
+
         void CommandSend(CommandModel cmd)
         {
             Trace.Call(cmd);
 
-            TrySend(cmd.Data, 0);
+            if (cmd.IsCommand && cmd.Command == "send") {
+                TrySend(cmd.Parameter, 0);
+            } else {
+                TrySend(cmd.Data, 0);
+            }
         }
 
         void CommandRelogin(CommandModel cmd)
@@ -255,6 +270,17 @@ namespace Smuxi.Engine.VBulletinChatbox
             UpdateSecurityToken();
         }
 
+        void CommandQuit(CommandModel cmd)
+        {
+            Trace.Call(cmd);
+
+            if (cmd.Chat != BoxChat) {
+                throw new ArgumentException("Unknown chat to close.");
+            }
+
+            CloseTheChat();
+        }
+
         void CommandHelp(CommandModel cmd)
         {
             Trace.Call(cmd);
@@ -268,8 +294,10 @@ namespace Smuxi.Engine.VBulletinChatbox
             string[] help = {
                 "help",
                 "me",
+                "quit",
                 "relogin",
-                "retoken"
+                "retoken",
+                "say"
             };
 
             foreach (var line in help) {
@@ -284,7 +312,7 @@ namespace Smuxi.Engine.VBulletinChatbox
         {
             Trace.Call(cmd);
 
-            if (!cmd.IsCommand || cmd.Command == "me") {
+            if (!cmd.IsCommand || cmd.Command == "me" || cmd.Command == "say") {
                 CommandSend(cmd);
             } else if (cmd.Command == "help") {
                 CommandHelp(cmd);
@@ -323,11 +351,12 @@ namespace Smuxi.Engine.VBulletinChatbox
         public override void CloseChat(FrontendManager fm, ChatModel chat)
         {
             Trace.Call(fm, chat);
-            Session.RemoveChat(chat);
 
-            if (EventStream != null) {
-                EventStream.Dispose();
+            if (chat != BoxChat) {
+                throw new ArgumentException("Unknown chat to close.");
             }
+
+            CloseTheChat();
         }
 
         public override void SetPresenceStatus(PresenceStatus status, string message)
