@@ -584,8 +584,16 @@ namespace Smuxi.Engine
                 }
             }
         }
+
+        string UriRelativeTo(string relativeUri, Uri baseUri)
+        {
+            if (baseUri == null) {
+                return relativeUri;
+            }
+            return new Uri(baseUri, relativeUri).ToString();
+        }
         
-        void ParseHtml(HtmlNode node, TextMessagePartModel model)
+        void ParseHtml(HtmlNode node, TextMessagePartModel model, Uri baseUri)
         {
             TextMessagePartModel submodel;
             string nodetype = node.Name.ToLower();
@@ -593,7 +601,8 @@ namespace Smuxi.Engine
                 submodel = new UrlMessagePartModel(model);
             } else if (nodetype == "a") {
                 submodel = new UrlMessagePartModel(model);
-                (submodel as UrlMessagePartModel).Url = node.GetAttributeValue("href", "");
+                var url = UriRelativeTo(node.GetAttributeValue("href", ""), baseUri);
+                (submodel as UrlMessagePartModel).Url = url;
             } else {
                 submodel = new TextMessagePartModel(model);
             }
@@ -624,7 +633,7 @@ namespace Smuxi.Engine
                     } else {
                         nextmodel = new TextMessagePartModel(submodel);
                     }
-                    ParseHtml(child, nextmodel);
+                    ParseHtml(child, nextmodel, baseUri);
                 }
             } else {
                 // final node
@@ -640,13 +649,12 @@ namespace Smuxi.Engine
                     } else {
                         alt = "<Image: " + alt + ">";
                     }
-                    AppendUrl(node.GetAttributeValue("src", ""), alt);
+                    AppendUrl(UriRelativeTo(node.GetAttributeValue("src", ""), baseUri), alt);
                 } else if (nodetype == "embed") {
-                    var src = node.GetAttributeValue("src", "");
                     if (string.IsNullOrEmpty(src)) {
                         AppendText("<Embed>");
                     } else {
-                        AppendUrl(src, "<Embed: " + src + ">");
+                        AppendUrl(UriRelativeTo(node.GetAttributeValue("src", ""), baseUri), "<Embed: " + src + ">");
                     }
                 } else {
                     model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
@@ -656,7 +664,12 @@ namespace Smuxi.Engine
             }
         }
 
-        public virtual MessageBuilder AppendHtmlMessage(string html)
+        public MessageBuilder AppendHtmlMessage(string html)
+        {
+            return AppendHtmlMessage(html, null);
+        }
+
+        public virtual MessageBuilder AppendHtmlMessage(string html, Uri baseUri)
         {
             html = NormalizeNewlines(html);
             var doc = new HtmlDocument();
@@ -670,7 +683,7 @@ namespace Smuxi.Engine
                 AppendText(html);
                 return this;
             }
-            ParseHtml(doc.DocumentNode, new TextMessagePartModel());
+            ParseHtml(doc.DocumentNode, new TextMessagePartModel(), baseUri);
             return this;
         }
 
