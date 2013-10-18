@@ -223,7 +223,7 @@ namespace Smuxi.Engine.VBulletinChatbox
                     outputBuilder.Me = person;
                 }
                 outputBuilder.AppendSenderPrefix(person);
-                outputBuilder.AppendHtmlMessage(msg.SelectSingleNode("./td[2]").InnerHtml.Trim());
+                outputBuilder.AppendHtmlMessage(msg.SelectSingleNode("./td[2]").InnerHtml.Trim(), MessagesUri);
 
                 newMessages.Add(outputBuilder.ToMessage());
             }

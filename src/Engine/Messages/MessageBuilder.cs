@@ -651,10 +651,11 @@ namespace Smuxi.Engine
                     }
                     AppendUrl(UriRelativeTo(node.GetAttributeValue("src", ""), baseUri), alt);
                 } else if (nodetype == "embed") {
+                    var src = node.GetAttributeValue("src", "");
                     if (string.IsNullOrEmpty(src)) {
                         AppendText("<Embed>");
                     } else {
-                        AppendUrl(UriRelativeTo(node.GetAttributeValue("src", ""), baseUri), "<Embed: " + src + ">");
+                        AppendUrl(UriRelativeTo(src, baseUri), "<Embed: " + src + ">");
                     }
                 } else {
                     model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
