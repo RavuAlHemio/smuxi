@@ -24,6 +24,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Xml;
 using System.Web;
 using Smuxi.Common;
@@ -600,9 +601,14 @@ namespace Smuxi.Engine
             if (model is UrlMessagePartModel) {
                 submodel = new UrlMessagePartModel(model);
             } else if (nodetype == "a") {
-                submodel = new UrlMessagePartModel(model);
-                var url = UriRelativeTo(node.GetAttributeValue("href", ""), baseUri);
-                (submodel as UrlMessagePartModel).Url = url;
+                var url = node.GetAttributeValue("href", "");
+                if (string.IsNullOrEmpty(url)) {
+                    submodel = new TextMessagePartModel(model);
+                } else {
+                    submodel = new UrlMessagePartModel(model);
+                    url = UriRelativeTo(WebUtility.HtmlDecode(url), baseUri);
+                    (submodel as UrlMessagePartModel).Url = url;
+                }
             } else {
                 submodel = new TextMessagePartModel(model);
             }
@@ -649,17 +655,24 @@ namespace Smuxi.Engine
                     } else {
                         alt = "<Image: " + alt + ">";
                     }
-                    AppendUrl(UriRelativeTo(node.GetAttributeValue("src", ""), baseUri), alt);
+                    var src = node.GetAttributeValue("src", "");
+                    if (string.IsNullOrEmpty(src)) {
+                        AppendText(alt);
+                    } else {
+                        src = WebUtility.HtmlDecode(src);
+                        AppendUrl(UriRelativeTo(src, baseUri), alt);
+                    }
                 } else if (nodetype == "embed") {
                     var src = node.GetAttributeValue("src", "");
                     if (string.IsNullOrEmpty(src)) {
                         AppendText("<Embed>");
                     } else {
+                        src = WebUtility.HtmlDecode(src);
                         AppendUrl(UriRelativeTo(src, baseUri), "<Embed: " + src + ">");
                     }
                 } else {
                     model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
-                    model.Text = HttpUtility.HtmlDecode(model.Text);
+                    model.Text = WebUtility.HtmlDecode(model.Text);
                     AppendText(model);
                 }
             }
