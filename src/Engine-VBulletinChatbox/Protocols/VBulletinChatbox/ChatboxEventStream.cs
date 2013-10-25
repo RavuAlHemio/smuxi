@@ -244,6 +244,11 @@ namespace Smuxi.Engine.VBulletinChatbox
             StopNow = true;
             WorkerThread.Interrupt();
         }
+
+        public void UpdateNow()
+        {
+            WorkerThread.Interrupt();
+        }
     }
 }
 

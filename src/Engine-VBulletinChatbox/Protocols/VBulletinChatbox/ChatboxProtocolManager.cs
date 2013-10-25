@@ -232,6 +232,9 @@ namespace Smuxi.Engine.VBulletinChatbox
                         break;
                 }
             }
+
+            // trigger the receiving thread to fetch an update immediately
+            EventStream.UpdateNow();
         }
 
         void CloseTheChat()
