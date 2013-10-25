@@ -204,11 +204,12 @@ namespace Smuxi.Engine.VBulletinChatbox
             request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
             var resp = request.GetResponse() as HttpWebResponse;
 
+            string respBody;
             using (var sr = new StreamReader(resp.GetResponseStream())) {
-                sr.ReadToEnd();
+                respBody = sr.ReadToEnd();
             }
 
-            if ((int)resp.StatusCode != 200) {
+            if ((int)resp.StatusCode != 200 || respBody.Length != 0) {
                 // something failed
                 switch (attempt) {
                     case 0:
