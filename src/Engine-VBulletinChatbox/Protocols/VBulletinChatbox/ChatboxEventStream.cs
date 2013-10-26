@@ -20,9 +20,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using HtmlAgilityPack;
 using Smuxi.Engine;
@@ -69,6 +71,9 @@ namespace Smuxi.Engine.VBulletinChatbox
         public EventHandler<MessageReceivedEventArgs> MessageReceived;
         public EventHandler<ErrorReceivedEventArgs> ErrorReceived;
         public EventHandler<UserAppearedEventArgs> UserAppeared;
+
+        public static readonly Regex TimestampPattern = new Regex("[[]([0-9][0-9]-[0-9][0-9]-[0-9][0-9], [0-9][0-9]:[0-9][0-9])[]]");
+        public const string TimestampSpec = "dd'-'MM'-'yy', 'HH':'mm";
 
         ChatModel Chat { get; set; }
         Uri MessagesUri { get; set; }
@@ -196,6 +201,18 @@ namespace Smuxi.Engine.VBulletinChatbox
                     newLastMessage = msgId;
                 }
 
+                // fetch the timestamp
+                var timeStamp = DateTime.Now;
+                var stampMatch = TimestampPattern.Match(metaTd.InnerHtml);
+                if (stampMatch.Success) {
+                    var timeString = stampMatch.Groups[1].Value;
+                    try {
+                        timeStamp = DateTime.ParseExact(timeString, TimestampSpec, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal);
+                    } catch (FormatException fe) {
+                        // meh
+                    }
+                }
+
                 // get the nickname
                 var nick = metaTd.SelectSingleNode(".//a[contains(@href,\"member.php?u=\")]//text()").InnerText;
 
@@ -219,6 +236,7 @@ namespace Smuxi.Engine.VBulletinChatbox
                     }
                 }
                 var outputBuilder = new MessageBuilder();
+                outputBuilder.TimeStamp = timeStamp;
                 if (nick == MyUsername) {
                     outputBuilder.Me = person;
                 }
