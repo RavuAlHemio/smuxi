@@ -201,7 +201,20 @@ namespace Smuxi.Engine.VBulletinChatbox
             byte[] requestBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(requestData);
 
             request.ContentLength = requestBytes.Length;
-            request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
+            try {
+                request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
+            } catch (WebException) {
+                // ffs, try again
+                if (attempt < 5) {
+                    TrySend(message, attempt + 1);
+                } else {
+                    var msg = CreateMessageBuilder()
+                              .AppendErrorText(_("Failed to send message due to timeout"))
+                              .ToMessage();
+                    Session.AddMessageToChat(BoxChat, msg);
+                }
+                return;
+            }
             var resp = request.GetResponse() as HttpWebResponse;
 
             string respBody;
