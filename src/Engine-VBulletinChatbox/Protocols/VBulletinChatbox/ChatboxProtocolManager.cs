@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
 using Smuxi.Common;
 using HtmlAgilityPack;
 
@@ -175,7 +176,15 @@ namespace Smuxi.Engine.VBulletinChatbox
             OutputStatusMessage(_("Security token fetched."));
         }
 
-        void TrySend(string message, int attempt)
+        void TrySend(string message)
+        {
+            Trace.Call(message);
+
+            var thd = new Thread(() => {RealTrySend(message, 0);});
+            thd.Start();
+        }
+
+        void RealTrySend(string message, int attempt)
         {
             Trace.Call(message, attempt);
 
@@ -206,7 +215,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             } catch (WebException) {
                 // ffs, try again
                 if (attempt < 5) {
-                    TrySend(message, attempt + 1);
+                    RealTrySend(message, attempt + 1);
                 } else {
                     var msg = CreateMessageBuilder()
                               .AppendErrorText(_("Failed to send message due to timeout"))
@@ -228,13 +237,13 @@ namespace Smuxi.Engine.VBulletinChatbox
                     case 0:
                         // fetch a new token and try again
                         UpdateSecurityToken();
-                        TrySend(message, 1);
+                        RealTrySend(message, 1);
                         break;
                     case 1:
                         // log in anew, fetch a new token and try again
                         LogIn();
                         UpdateSecurityToken();
-                        TrySend(message, 2);
+                        RealTrySend(message, 2);
                         break;
                     default:
                         // guess not
@@ -266,9 +275,9 @@ namespace Smuxi.Engine.VBulletinChatbox
             Trace.Call(cmd);
 
             if (cmd.IsCommand && cmd.Command == "send") {
-                TrySend(cmd.Parameter, 0);
+                TrySend(cmd.Parameter);
             } else {
-                TrySend(cmd.Data, 0);
+                TrySend(cmd.Data);
             }
         }
 
