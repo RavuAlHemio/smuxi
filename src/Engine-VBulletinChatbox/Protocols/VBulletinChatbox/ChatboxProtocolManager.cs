@@ -156,8 +156,14 @@ namespace Smuxi.Engine.VBulletinChatbox
 
             var req = HttpWebRequest.Create(new Uri(ForumUri, "faq.php")) as HttpWebRequest;
             req.CookieContainer = BoxClient.CookieJar;
-            var res = req.GetResponse() as HttpWebResponse;
+            HttpWebResponse res;
             string gotthis;
+            try {
+                res = req.GetResponse() as HttpWebResponse;
+            } catch (WebException) {
+                OutputStatusMessage(_("Security token fetching timed out."));
+                return;
+            }
 
             using (StreamReader sr = new StreamReader(res.GetResponseStream(), Encoding.GetEncoding("ISO-8859-1"))) {
                 // read it
