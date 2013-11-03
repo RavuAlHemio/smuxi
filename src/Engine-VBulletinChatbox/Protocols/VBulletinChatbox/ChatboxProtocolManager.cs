@@ -39,7 +39,7 @@ namespace Smuxi.Engine.VBulletinChatbox
         FrontendManager Frontend { get; set; }
         Uri ForumUri { get; set; }
         GroupChatModel BoxChat { get; set; }
-        CookieJarWebClient BoxClient { get; set; }
+        CookieContainer CookieJar { get; set; }
         ChatboxEventStream EventStream { get; set; }
         string SecurityToken { get; set; }
         string Username { get; set; }
@@ -105,14 +105,12 @@ namespace Smuxi.Engine.VBulletinChatbox
             Session.AddChat(BoxChat);
             Session.SyncChat(BoxChat);
 
-            // create the client
-            BoxClient = new CookieJarWebClient();
-            BoxClient.Encoding = Encoding.GetEncoding("ISO-8859-1");
+            CookieJar = new CookieContainer();
 
             LogIn();
             UpdateSecurityToken();
 
-            EventStream = new ChatboxEventStream(BoxChat, ForumUri, Username, BoxClient.CookieJar);
+            EventStream = new ChatboxEventStream(BoxChat, ForumUri, Username, CookieJar);
             EventStream.MessageReceived += ShowMessage;
             EventStream.ErrorReceived += ShowError;
             EventStream.UserAppeared += AddUser;
@@ -134,6 +132,10 @@ namespace Smuxi.Engine.VBulletinChatbox
 
             OutputStatusMessage(string.Format(_("Logging in to VBulletin Chatbox at {0}..."), ForumUri));
 
+            // create temporary client
+            var boxClient = new CookieJarWebClient();
+            boxClient.Encoding = Encoding.GetEncoding("ISO-8859-1");
+
             // login to forum
             var postValues = new System.Collections.Specialized.NameValueCollection();
             postValues.Add("vb_login_username", Username);
@@ -143,7 +145,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             postValues.Add("do", "login");
             postValues.Add("vb_login_md5password", "");
             postValues.Add("vb_login_md5password_utf", "");
-            BoxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
+            boxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
 
             OutputStatusMessage(_("Logged in."));
         }
@@ -155,7 +157,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             OutputStatusMessage(_("Fetching security token..."));
 
             var req = HttpWebRequest.Create(new Uri(ForumUri, "faq.php")) as HttpWebRequest;
-            req.CookieContainer = BoxClient.CookieJar;
+            req.CookieContainer = CookieJar;
             HttpWebResponse res;
             string gotthis;
             try {
@@ -198,7 +200,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             request.KeepAlive = false;
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
-            request.CookieContainer = BoxClient.CookieJar;
+            request.CookieContainer = CookieJar;
 
             string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage=", SecurityToken);
             foreach (char c in message) {
