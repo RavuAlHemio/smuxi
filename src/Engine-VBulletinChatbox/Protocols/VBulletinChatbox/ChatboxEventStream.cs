@@ -74,6 +74,7 @@ namespace Smuxi.Engine.VBulletinChatbox
 
         public static readonly Regex TimestampPattern = new Regex("[[]([0-9][0-9]-[0-9][0-9]-[0-9][0-9], [0-9][0-9]:[0-9][0-9])[]]");
         public const string TimestampSpec = "dd'-'MM'-'yy', 'HH':'mm";
+        const int HttpTimeout = 5000;
 
         ChatModel Chat { get; set; }
         Uri MessagesUri { get; set; }
@@ -156,6 +157,7 @@ namespace Smuxi.Engine.VBulletinChatbox
         {
             var req = HttpWebRequest.Create(MessagesUri) as HttpWebRequest;
             req.CookieContainer = CookieJar;
+            req.Timeout = HttpTimeout;
             var res = req.GetResponse() as HttpWebResponse;
             string gotthis = null;
             ulong newLastMessage = LastMessage;

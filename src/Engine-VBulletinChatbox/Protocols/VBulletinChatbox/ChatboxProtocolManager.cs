@@ -35,6 +35,7 @@ namespace Smuxi.Engine.VBulletinChatbox
 #if LOG4NET
         static readonly log4net.ILog Logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 #endif
+        const int HttpTimeout = 10000;
 
         FrontendManager Frontend { get; set; }
         Uri ForumUri { get; set; }
@@ -135,6 +136,8 @@ namespace Smuxi.Engine.VBulletinChatbox
             // create temporary client
             var boxClient = new CookieJarWebClient();
             boxClient.Encoding = Encoding.GetEncoding("ISO-8859-1");
+            boxClient.CookieJar = CookieJar;
+            boxClient.Timeout = HttpTimeout;
 
             // login to forum
             var postValues = new System.Collections.Specialized.NameValueCollection();
@@ -158,6 +161,7 @@ namespace Smuxi.Engine.VBulletinChatbox
 
             var req = HttpWebRequest.Create(new Uri(ForumUri, "faq.php")) as HttpWebRequest;
             req.CookieContainer = CookieJar;
+            req.Timeout = HttpTimeout;
             HttpWebResponse res;
             string gotthis;
             try {
@@ -201,6 +205,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
             request.CookieContainer = CookieJar;
+            request.Timeout = HttpTimeout;
 
             string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage=", SecurityToken);
             foreach (char c in message) {
@@ -217,9 +222,11 @@ namespace Smuxi.Engine.VBulletinChatbox
             }
             byte[] requestBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(requestData);
 
+            HttpWebResponse resp;
             request.ContentLength = requestBytes.Length;
             try {
                 request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
+                resp = request.GetResponse() as HttpWebResponse;
             } catch (WebException) {
                 // ffs, try again
                 if (attempt < 5) {
@@ -232,7 +239,6 @@ namespace Smuxi.Engine.VBulletinChatbox
                 }
                 return;
             }
-            var resp = request.GetResponse() as HttpWebResponse;
 
             string respBody;
             using (var sr = new StreamReader(resp.GetResponseStream())) {
@@ -293,15 +299,19 @@ namespace Smuxi.Engine.VBulletinChatbox
         {
             Trace.Call(cmd);
 
-            LogIn();
-            UpdateSecurityToken();
+            var thd = new Thread(() => {
+                LogIn();
+                UpdateSecurityToken();
+            });
+            thd.Start();
         }
 
         void CommandRetoken(CommandModel cmd)
         {
             Trace.Call(cmd);
 
-            UpdateSecurityToken();
+            var thd = new Thread(UpdateSecurityToken);
+            thd.Start();
         }
 
         void CommandQuit(CommandModel cmd)

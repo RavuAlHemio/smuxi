@@ -25,11 +25,13 @@ namespace Smuxi.Engine.VBulletinChatbox
 {
     public class CookieJarWebClient : WebClient
     {
-        public readonly CookieContainer CookieJar = new CookieContainer();
+        public CookieContainer CookieJar = new CookieContainer();
+        public int Timeout = 5000;
 
         protected override WebRequest GetWebRequest(Uri address)
         {
             var request = base.GetWebRequest(address);
+            request.Timeout = Timeout;
             var httpRequest = request as HttpWebRequest;
             if (httpRequest != null) {
                 httpRequest.CookieContainer = CookieJar;
