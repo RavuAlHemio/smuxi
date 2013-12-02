@@ -158,7 +158,10 @@ namespace Smuxi.Engine.VBulletinChatbox
             var req = HttpWebRequest.Create(MessagesUri) as HttpWebRequest;
             req.CookieContainer = CookieJar;
             req.Timeout = HttpTimeout;
-            var res = req.GetResponse() as HttpWebResponse;
+            HttpWebResponse res;
+            lock (CookieJar) {
+                res = req.GetResponse() as HttpWebResponse;
+            }
             string gotthis = null;
             ulong newLastMessage = LastMessage;
             var newMessages = new List<MessageModel>();

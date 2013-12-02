@@ -148,7 +148,10 @@ namespace Smuxi.Engine.VBulletinChatbox
             postValues.Add("do", "login");
             postValues.Add("vb_login_md5password", "");
             postValues.Add("vb_login_md5password_utf", "");
-            boxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
+
+            lock (CookieJar) {
+                boxClient.UploadValues(new Uri(ForumUri, "login.php?do=login"), "POST", postValues);
+            }
 
             OutputStatusMessage(_("Logged in."));
         }
@@ -165,7 +168,9 @@ namespace Smuxi.Engine.VBulletinChatbox
             HttpWebResponse res;
             string gotthis;
             try {
-                res = req.GetResponse() as HttpWebResponse;
+                lock (CookieJar) {
+                    res = req.GetResponse() as HttpWebResponse;
+                }
             } catch (WebException) {
                 OutputStatusMessage(_("Security token fetching timed out."));
                 return;
@@ -225,8 +230,10 @@ namespace Smuxi.Engine.VBulletinChatbox
             HttpWebResponse resp;
             request.ContentLength = requestBytes.Length;
             try {
-                request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
-                resp = request.GetResponse() as HttpWebResponse;
+                lock (CookieJar) {
+                    request.GetRequestStream().Write(requestBytes, 0, requestBytes.Length);
+                    resp = request.GetResponse() as HttpWebResponse;
+                }
             } catch (WebException) {
                 // ffs, try again
                 if (attempt < 5) {
