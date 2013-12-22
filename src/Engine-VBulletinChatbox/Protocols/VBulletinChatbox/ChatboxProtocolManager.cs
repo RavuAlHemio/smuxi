@@ -201,6 +201,49 @@ namespace Smuxi.Engine.VBulletinChatbox
             thd.Start();
         }
 
+        string EncodeOutgoingString(string message)
+        {
+            Trace.Call(message);
+
+            var serverEncoding = Encoding.GetEncoding("ISO-8859-1", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+            var ret = new StringBuilder();
+            char? prev = null;
+            foreach (char c in message) {
+                if (prev >= 0xD800 && prev <= 0xDBFF && (c < 0xDC00 || c > 0xDFFF)) {
+                    // lead code point without trail code point; skip
+                } else if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_' || c == '.') {
+                    // URL-safe character
+                    ret.Append(c);
+                } else if (c >= 0xD800 && c <= 0xDBFF) {
+                    // lead code point; handle this next time around
+                } else if (c >= 0xDC00 && c <= 0xDFFF) {
+                    // trail code point (and the previous is a lead code point)
+
+                    // decode UTF-16 to real codepoint
+                    uint top10 = ((uint) prev - 0xD800) << 10;
+                    uint btm10 = ((uint) c - 0xDC00);
+                    uint realpoint = (top10 | btm10) + 0x10000;
+
+                    // URL-encode the HTML escape of this
+                    ret.AppendFormat("%26%23{0}%3B", realpoint);
+                } else {
+                    try {
+                        // character in the server's encoding
+                        foreach (var b in serverEncoding.GetBytes(c.ToString())) {
+                            ret.AppendFormat("%{0:X2}", (int) b);
+                        }
+                    } catch (EncoderFallbackException) {
+                        // Unicode BMP character
+                        // the Chatbox allows (URL-encoded) HTML escapes for this
+                        ret.AppendFormat("%26%23{0}%3B", (int) c);
+                    }
+                }
+                prev = c;
+            }
+
+            return ret.ToString();
+        }
+
         void RealTrySend(string message, int attempt)
         {
             Trace.Call(message, attempt);
@@ -212,19 +255,7 @@ namespace Smuxi.Engine.VBulletinChatbox
             request.CookieContainer = CookieJar;
             request.Timeout = HttpTimeout;
 
-            string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage=", SecurityToken);
-            foreach (char c in message) {
-                if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_' || c == '.') {
-                    requestData += c;
-                } else if (c <= (char)0xFF) {
-                    foreach (byte b in Encoding.GetEncoding("ISO-8859-1").GetBytes(c.ToString())) {
-                        requestData += string.Format("%{0:X2}", b);
-                    }
-                } else {
-                    // the Chatbox allows (URL-encoded) HTML escapes for this
-                    requestData += string.Format("%26%23{0}%3B", (int)c);
-                }
-            }
+            string requestData = string.Format("do=cb_postnew&securitytoken={0}&vsacb_newmessage={1}", SecurityToken, EncodeOutgoingString(message));
             byte[] requestBytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(requestData);
 
             HttpWebResponse resp;
