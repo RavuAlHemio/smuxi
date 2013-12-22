@@ -179,8 +179,14 @@ namespace Smuxi.Engine.VBulletinChatbox
             var doc = new HtmlDocument();
             doc.LoadHtml(gotthis);
 
+            var nodes = doc.DocumentNode.SelectNodes("/messages/tr");
+            if (nodes == null) {
+                // something might have gone wrong
+                return;
+            }
+
             // for each message
-            foreach (HtmlNode msg in doc.DocumentNode.SelectNodes("/messages/tr")) {
+            foreach (HtmlNode msg in nodes) {
                 ulong msgId;
                 ulong userId;
 
