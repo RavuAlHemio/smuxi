@@ -20,6 +20,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
 using System;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
@@ -593,7 +594,71 @@ namespace Smuxi.Engine
             }
             return new Uri(baseUri, relativeUri).ToString();
         }
-        
+
+        static Regex HtmlCharRef = new Regex("[&]([a-zA-Z]+|#([0-9]+|x[0-9a-fA-F]+))[;]");
+        static string HtmlDecode(string input)
+        {
+            var decodedBuilder = new StringBuilder();
+            int lastMatchEnd = 0;
+
+            foreach (Match m in HtmlCharRef.Matches(input)) {
+                // copy all the input preceding this match
+                decodedBuilder.Append(input, lastMatchEnd, m.Index - lastMatchEnd);
+
+                // mark the end of this match
+                lastMatchEnd = m.Index + m.Length;
+
+                // check what was matched
+                var matchedContent = m.Groups [1].Value;
+                if (matchedContent [0] == '#') {
+                    // numeric escape
+                    uint escapedValue;
+                    string toParse = matchedContent.Substring(1);
+                    NumberStyles style = NumberStyles.Integer;
+
+                    if (matchedContent [1] == 'x') {
+                        // hex escape
+                        style = NumberStyles.HexNumber;
+                        toParse = matchedContent.Substring(2);
+                    }
+
+                    if (!uint.TryParse(toParse, style, CultureInfo.InvariantCulture, out escapedValue)) {
+                        // misparse -- copy verbatim
+                        decodedBuilder.Append(m.Value);
+                        continue;
+                    }
+
+                    // validate the character value
+                    if ((escapedValue >= 0xD800 && escapedValue <= 0xDFFF) || escapedValue > 0x10FFFF) {
+                        // out-of-bounds -- copy verbatim
+                        decodedBuilder.Append(m.Value);
+                        continue;
+                    }
+
+                    if (escapedValue > 0xFFFF) {
+                        // past the BMP -- do the surrogate dance
+                        escapedValue -= 0x10000;
+                        char leadSur = (char)(0xD800 + ((escapedValue >> 10) & 0x3FF));
+                        char trailSur = (char)(0xDC00 + ((escapedValue >> 0) & 0x3FF));
+                        decodedBuilder.Append(leadSur);
+                        decodedBuilder.Append(trailSur);
+                    } else {
+                        // within the BMP -- act natural
+                        decodedBuilder.Append((char) escapedValue);
+                    }
+                } else {
+                    // named escape -- hand over to the built-in decoding method
+                    decodedBuilder.Append(WebUtility.HtmlDecode(m.Value));
+                }
+            }
+
+            // append the remaining parts of the string
+            decodedBuilder.Append(input.Substring(lastMatchEnd));
+
+            // return
+            return decodedBuilder.ToString();
+        }
+
         void ParseHtml(HtmlNode node, TextMessagePartModel model, Uri baseUri)
         {
             TextMessagePartModel submodel;
@@ -606,7 +671,7 @@ namespace Smuxi.Engine
                     submodel = new TextMessagePartModel(model);
                 } else {
                     submodel = new UrlMessagePartModel(model);
-                    url = UriRelativeTo(WebUtility.HtmlDecode(url), baseUri);
+                    url = UriRelativeTo(HtmlDecode(url), baseUri);
                     (submodel as UrlMessagePartModel).Url = url;
                 }
             } else {
@@ -659,7 +724,7 @@ namespace Smuxi.Engine
                     if (string.IsNullOrEmpty(src)) {
                         AppendText(alt);
                     } else {
-                        src = WebUtility.HtmlDecode(src);
+                        src = HtmlDecode(src);
                         AppendUrl(UriRelativeTo(src, baseUri), alt);
                     }
                 } else if (nodetype == "embed") {
@@ -667,12 +732,12 @@ namespace Smuxi.Engine
                     if (string.IsNullOrEmpty(src)) {
                         AppendText("<Embed>");
                     } else {
-                        src = WebUtility.HtmlDecode(src);
+                        src = HtmlDecode(src);
                         AppendUrl(UriRelativeTo(src, baseUri), "<Embed: " + src + ">");
                     }
                 } else {
                     model.Text = node.InnerHtml.Replace("\r", "").Replace("\n", "");
-                    model.Text = WebUtility.HtmlDecode(model.Text);
+                    model.Text = HtmlDecode(model.Text);
                     AppendText(model);
                 }
             }

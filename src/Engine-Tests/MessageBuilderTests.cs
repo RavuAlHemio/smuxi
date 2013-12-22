@@ -309,5 +309,149 @@ namespace Smuxi.Engine
             var builder = new MessageBuilder();
             builder.AppendFormat("{{{{virtual {0}}}}}", "hugs");
         }
+
+        [Test]
+        public void AppendHtmlDecimalChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("\u0159");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("&#345;");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendHtmlHexChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("\u0159");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("&#x159;");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendMiddleDecimalChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k\u0159ovina");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k&#345;ovina");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendMiddleHexChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k\u0159ovina");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k&#x159;ovina");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendMultipleDecimalHexChars()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k\u0159ovino\u0159ez");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("k&#345;ovino&#x159;ez");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendMiddleHighDecimalChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("well done \U0001F609 and the next step?");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("well done &#128521; and the next step?");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendMiddleHighHexChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("well done \U0001F609 and the next step?");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("well done &#x1F609; and the next step?");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendNamedChar()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("a \u21d2 b");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("a &rArr; b");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
+
+        [Test]
+        public void AppendCharGauntlet()
+        {
+            var builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("A nen\u00ed ke\u0159 \u21D2 A je strom \U0001F61B\U0001F609");
+            var expectedMsg = builder.ToMessage();
+
+            builder = new MessageBuilder();
+            builder.TimeStamp = DateTime.MinValue;
+            builder.AppendHtmlMessage("A &#110;e&#x6e;&#237; ke&#x159; &#x21D2; A je strom &#x1F61b;&#128521;");
+            var actualMsg = builder.ToMessage();
+
+            Assert.AreEqual(expectedMsg, actualMsg);
+        }
     }
 }
