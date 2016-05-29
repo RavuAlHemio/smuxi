@@ -7,6 +7,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using DotLiquid;
+using DotLiquid.FileSystems;
 using RavuAlHemio.HttpDispatcher;
 using Smuxi.Common;
 using Smuxi.Engine;
@@ -19,22 +20,22 @@ namespace Smuxi.Frontend.Http
     {
         private static readonly LogHelper Logger = new LogHelper(MethodBase.GetCurrentMethod().DeclaringType);
 
+        protected HttpAuthenticator Authenticator { get; }
         public Dictionary<ChatModel, HttpChat> ChatFrontends { get; }
         public List<ChatModel> Chats { get; }
-        public Template ChatPageTemplate { get; }
+        public Template ChatPageTemplate { get; protected set; }
         public CommandManager CommandManager { get; set; }
-        public Dictionary<string, string> ExtensionsToMimeTypes { get; private set; }
+        public Dictionary<string, string> ExtensionsToMimeTypes { get; }
         public DistributingHttpListener Listener { get; set; }
+        public Template LoginPageTemplate { get; protected set; }
         public int Version => 0;
 
         public HttpUI(string uriPrefix)
         {
+            Authenticator = new HttpAuthenticator();
             ChatFrontends = new Dictionary<ChatModel, HttpChat>();
             Chats = new List<ChatModel>();
-            using (var reader = new StreamReader(
-                    Path.Combine("Templates", "chat.html.liquid"), Encoding.UTF8)) {
-                ChatPageTemplate = Template.Parse(reader.ReadToEnd());
-            }
+            LoadTemplates();
             ExtensionsToMimeTypes = new Dictionary<string, string>
             {
                 [".css"] = "text/css",
@@ -141,12 +142,18 @@ namespace Smuxi.Frontend.Http
         [Endpoint("/", Method = "GET")]
         public void LandingPage(HttpListenerContext ctx)
         {
-            // TODO
+            if (!AssertLoggedIn(ctx)) {
+                return;
+            }
         }
 
         [Endpoint("/{chatIndex}", Method = "GET")]
         public void ChatPage(HttpListenerContext ctx, int chatIndex)
         {
+            if (!AssertLoggedIn(ctx)) {
+                return;
+            }
+
             if (chatIndex < 0 || chatIndex >= Chats.Count) {
                 ReturnNotFound(ctx);
                 return;
@@ -163,15 +170,16 @@ namespace Smuxi.Frontend.Http
                 chat_index = chatIndex.ToString(CultureInfo.InvariantCulture)
             }));
 
-            byte[] resultBytes = Encoding.UTF8.GetBytes(result);
-            ctx.Response.ContentType = "text/html; charset=utf-8";
-            ctx.Response.ContentLength64 = resultBytes.Length;
-            ctx.Response.Close(resultBytes, willBlock: true);
+            ReturnHtml(ctx, result);
         }
 
         [Endpoint("/{chatIndex}/message", Method = "POST")]
         public void PostMessage(HttpListenerContext ctx, int chatIndex)
         {
+            if (!AssertLoggedIn(ctx)) {
+                return;
+            }
+
             if (chatIndex < 0 || chatIndex >= Chats.Count) {
                 ReturnNotFound(ctx);
                 return;
@@ -179,20 +187,8 @@ namespace Smuxi.Frontend.Http
 
             ChatModel chat = Chats[chatIndex];
 
-            string query;
-            using (var storage = new MemoryStream()) {
-                ctx.Request.InputStream.CopyTo(storage);
-                query = Encoding.UTF8.GetString(storage.ToArray());
-            }
-
-            string[] keyValueStrings = query.Split('&');
-            var keysValues = new Dictionary<string, string>();
-            foreach (string keyValue in keyValueStrings) {
-                string[] pieces = keyValue.Split(new[] {'='}, 2);
-                string key = WebUtility.UrlDecode(pieces[0]);
-                string value = pieces.Length > 1 ? WebUtility.UrlDecode(pieces[1]) : null;
-                keysValues[key] = value;
-            }
+            string query = ReadRequestBody(ctx.Request.InputStream);
+            Dictionary<string, string> keysValues = HttpUtil.DecodeUrlEncodedForm(query);
 
             if (!keysValues.ContainsKey("message") || string.IsNullOrEmpty(keysValues["message"])) {
                 ReturnBadRequest(ctx, "Missing message.");
@@ -214,6 +210,10 @@ namespace Smuxi.Frontend.Http
         [Endpoint("/{chatIndex}/messages", Method = "GET")]
         public void MessagesFragment(HttpListenerContext ctx, int chatIndex)
         {
+            if (!AssertLoggedIn(ctx)) {
+                return;
+            }
+
             if (chatIndex < 0 || chatIndex >= Chats.Count) {
                 ReturnNotFound(ctx);
                 return;
@@ -229,10 +229,7 @@ namespace Smuxi.Frontend.Http
                 messages.Append("</div>\r\n");
             }
             
-            byte[] messagesBytes = Encoding.UTF8.GetBytes(messages.ToString());
-            ctx.Response.ContentType = "text/html; charset=utf-8";
-            ctx.Response.ContentLength64 = messagesBytes.Length;
-            ctx.Response.Close(messagesBytes, willBlock: true);
+            ReturnHtml(ctx, messages.ToString());
         }
 
         [Endpoint("/static/{fileName}", Method = "GET")]
@@ -265,6 +262,39 @@ namespace Smuxi.Frontend.Http
             ctx.Response.Close();
         }
 
+        [Endpoint("/login", Method = "GET")]
+        public void LoginForm(HttpListenerContext ctx)
+        {
+            string result = LoginPageTemplate.Render();
+            ReturnHtml(ctx, result);
+        }
+
+        [Endpoint("/login", Method = "POST")]
+        public void ProcessLogin(HttpListenerContext ctx)
+        {
+            // read in the request
+            string query = ReadRequestBody(ctx.Request.InputStream);
+            
+            // attempt login
+            if (Authenticator.Login(ctx.Response, query)) {
+                // redirect to landing page
+                Redirect(ctx, "/");
+            } else {
+                // redirect to login form
+                Redirect(ctx, "/login");
+            }
+        }
+
+        [Endpoint("/logout", Method = "GET")]
+        [Endpoint("/logout", Method = "POST")]
+        public void Logout(HttpListenerContext ctx)
+        {
+            Authenticator.Logout();
+
+            // redirect to the login form
+            Redirect(ctx, "/login");
+        }
+
         protected void ReturnNotFound(HttpListenerContext ctx)
         {
             ReturnPlainText(ctx, "Not found.", 404);
@@ -285,22 +315,64 @@ namespace Smuxi.Frontend.Http
             ctx.Response.Close(bytes, willBlock: true);
         }
 
+        protected void ReturnHtml(HttpListenerContext ctx, string html, int code = 200)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(html);
+
+            ctx.Response.StatusCode = code;
+            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.ContentType = "text/html; charset=utf-8";
+            ctx.Response.Close(bytes, willBlock: true);
+        }
+
         protected void Redirect(HttpListenerContext ctx, string target, int code = 303)
         {
-            // get current URL
-            var currentUrlString = new StringBuilder();
-            currentUrlString.Append(ctx.Request.IsSecureConnection ? "https" : "http");
-            currentUrlString.Append("://");
-            currentUrlString.Append(ctx.Request.UserHostName ?? ctx.Request.UserHostAddress);
-            currentUrlString.Append(ctx.Request.RawUrl);
-
-            var currentUrl = new Uri(currentUrlString.ToString());
+            Uri currentUrl = HttpUtil.GetHttpListenerRequestUri(ctx.Request);
             var targetUrl = new Uri(currentUrl, target);
 
             ctx.Response.StatusCode = code;
             ctx.Response.ContentLength64 = 0;
             ctx.Response.RedirectLocation = targetUrl.AbsoluteUri;
             ctx.Response.Close();
+        }
+
+        protected string ReadRequestBody(Stream requestStream)
+        {
+            string query;
+            using (var storage = new MemoryStream()) {
+                requestStream.CopyTo(storage);
+                query = Encoding.UTF8.GetString(storage.ToArray());
+            }
+            return query;
+        }
+
+        protected virtual bool AssertLoggedIn(HttpListenerContext ctx)
+        {
+            if (Authenticator.CheckAuthenticated(ctx)) {
+                // OK
+                return true;
+            }
+
+            // bad; redirect to login and suppress further processing
+            Redirect(ctx, "/login");
+            return false;
+        }
+
+        protected virtual void LoadTemplates()
+        {
+            Template.FileSystem = new LocalFileSystem(Path.Combine(Environment.CurrentDirectory, "Templates"));
+
+            ChatPageTemplate = LoadTemplate("chat.html.liquid");
+            LoginPageTemplate = LoadTemplate("login.html.liquid");
+        }
+
+        protected virtual Template LoadTemplate(string filename)
+        {
+            using (var reader = new StreamReader(
+                    Path.Combine("Templates", filename), Encoding.UTF8))
+            {
+                return Template.Parse(reader.ReadToEnd());
+            }
         }
     }
 }

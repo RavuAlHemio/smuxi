@@ -54,14 +54,18 @@
   <ItemGroup>
     <Compile Include="Drops\ChatDrop.cs" />
     <Compile Include="Frontend.cs" />
+    <Compile Include="HttpAuthenticator.cs" />
     <Compile Include="HttpChat.cs" />
     <Compile Include="HttpUI.cs" />
+    <Compile Include="HttpUtil.cs" />
     <Compile Include="LogHelper.cs" />
     <Compile Include="MainClass.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Templates\_base.html.liquid" />
+    <None Include="Templates\login.html.liquid" />
     <None Include="Templates\chat.html.liquid" />
   </ItemGroup>
   <ItemGroup>

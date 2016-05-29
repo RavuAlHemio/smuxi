@@ -21,7 +21,6 @@
  */
 
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("Smuxi - HTTP frontend")]
 [assembly: AssemblyCopyright("2016 (C) Ondra Hosek <ondra.hosek@gmail.com>")]

@@ -1,0 +1,11 @@
+{% include "base.html" %}
+{% block title %}Login &ndash; Smuxi{% endblock %}
+{% block body %}
+    <form action="/login" method="post">
+      <p>
+        <input type="text" name="username" placeholder="username" />
+        <input type="password" name="password" placeholder="password" />
+        <button type="submit" id="login-submit">Login</button>
+      </p>
+    </form>
+{% endblock %}

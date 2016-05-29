@@ -1,6 +1,13 @@
-{% include "base.html" %}
-{% block title %}{{ chat.name | escape }} &ndash; Smuxi{% endblock %}
-{% block body %}
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}Smuxi{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+    <script type="text/javascript" src="/static/smuxi.js"></script>
+  </head>
+  <body>
+    {% block body %}
+    {% endblock %}
     <form action="{{ chat_index | escape }}/message" method="post">
       <p>
         <input type="text" name="message" id="message-input" />
@@ -18,14 +25,8 @@
         </ul>
       </section>
     </section>
-    <section id="chats">
-      <ul>
-        {% for chat in chats %}
-        <li><a href="/{{ forloop.index0 | escape }}">{{ chat | escape }}</a></li>
-        {% endfor %}
-      </ul>
-    </section>
     <script type="text/javascript">
       Smuxi.initMessageRefresh();
     </script>
-{% endblock %}
+  </body>
+</html>
