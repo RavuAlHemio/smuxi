@@ -14,18 +14,45 @@ button {
     background-color: #eee;
 }
 
-#message-input {
+#message-input, #message-submit {
     width: 100%;
 }
 
-#message-submit {
-    width: 100%;
-}
-
-#participants > ul {
+#participants > ul, #chats > ul {
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+.message, #participants > ul > li {
+    margin-bottom: 0.2em;
+}
+
+#participants > ul > li {
+    white-space: nowrap;
+}
+
+#chats > ul > li {
+    display: inline;
+}
+
+#chats > ul > li::before {
+    content: "\0000B7  ";
+}
+
+#chats > ul > li:first-child::before {
+    content: "";
+}
+
+.sigil {
+    display: inline-block;
+    text-align: center;
+    width: 1em;
+}
+
+.timestamp {
+    display: inline-block;
+    width: 4em;
 }
 
 @media (min-width: 700px) {
