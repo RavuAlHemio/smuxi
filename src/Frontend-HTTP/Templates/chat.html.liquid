@@ -18,13 +18,7 @@
         </ul>
       </section>
     </section>
-    <section id="chats">
-      <ul>
-        {% for chat in chats %}
-        <li><a href="/{{ forloop.index0 }}">{{ chat | escape }}</a></li>
-        {% endfor %}
-      </ul>
-    </section>
+    {% include "chats" %}
     <script type="text/javascript">
       Smuxi.initMessageRefresh();
     </script>

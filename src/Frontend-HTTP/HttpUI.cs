@@ -7,7 +7,6 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using DotLiquid;
-using DotLiquid.FileSystems;
 using RavuAlHemio.HttpDispatcher;
 using Smuxi.Common;
 using Smuxi.Engine;
@@ -23,11 +22,10 @@ namespace Smuxi.Frontend.Http
         protected HttpAuthenticator Authenticator { get; }
         public Dictionary<ChatModel, HttpChat> ChatFrontends { get; }
         public List<ChatModel> Chats { get; }
-        public Template ChatPageTemplate { get; protected set; }
         public CommandManager CommandManager { get; set; }
         public Dictionary<string, string> ExtensionsToMimeTypes { get; }
         public DistributingHttpListener Listener { get; set; }
-        public Template LoginPageTemplate { get; protected set; }
+        public Templates Templates { get; set; }
         public int Version => 0;
 
         public HttpUI(string uriPrefix)
@@ -35,7 +33,6 @@ namespace Smuxi.Frontend.Http
             Authenticator = new HttpAuthenticator();
             ChatFrontends = new Dictionary<ChatModel, HttpChat>();
             Chats = new List<ChatModel>();
-            LoadTemplates();
             ExtensionsToMimeTypes = new Dictionary<string, string>
             {
                 [".css"] = "text/css",
@@ -43,6 +40,7 @@ namespace Smuxi.Frontend.Http
             };
             Listener = new DistributingHttpListener(uriPrefix);
             Listener.AddResponder(this);
+            Templates = new Templates();
         }
 
         public void Start()
@@ -145,6 +143,14 @@ namespace Smuxi.Frontend.Http
             if (!AssertLoggedIn(ctx)) {
                 return;
             }
+
+            List<string> chatNames = Chats.Select(c => c.Name).ToList();
+            string result = Templates.LandingPage.Render(Hash.FromAnonymousObject(new
+            {
+                chat_names = chatNames
+            }));
+
+            ReturnHtml(ctx, result);
         }
 
         [Endpoint("/{chatIndex}", Method = "GET")]
@@ -163,10 +169,10 @@ namespace Smuxi.Frontend.Http
             ChatDrop chatDrop = new ChatDrop(chat);
 
             List<string> chatNames = Chats.Select(c => c.Name).ToList();
-            string result = ChatPageTemplate.Render(Hash.FromAnonymousObject(new
+            string result = Templates.ChatPage.Render(Hash.FromAnonymousObject(new
             {
                 chat = chatDrop,
-                chats = chatNames,
+                chat_names = chatNames,
                 chat_index = chatIndex.ToString(CultureInfo.InvariantCulture)
             }));
 
@@ -265,7 +271,7 @@ namespace Smuxi.Frontend.Http
         [Endpoint("/login", Method = "GET")]
         public void LoginForm(HttpListenerContext ctx)
         {
-            string result = LoginPageTemplate.Render();
+            string result = Templates.LoginPage.Render();
             ReturnHtml(ctx, result);
         }
 
@@ -356,23 +362,6 @@ namespace Smuxi.Frontend.Http
             // bad; redirect to login and suppress further processing
             Redirect(ctx, "/login");
             return false;
-        }
-
-        protected virtual void LoadTemplates()
-        {
-            Template.FileSystem = new LocalFileSystem(Path.Combine(Environment.CurrentDirectory, "Templates"));
-
-            ChatPageTemplate = LoadTemplate("chat.html.liquid");
-            LoginPageTemplate = LoadTemplate("login.html.liquid");
-        }
-
-        protected virtual Template LoadTemplate(string filename)
-        {
-            using (var reader = new StreamReader(
-                    Path.Combine("Templates", filename), Encoding.UTF8))
-            {
-                return Template.Parse(reader.ReadToEnd());
-            }
         }
     }
 }

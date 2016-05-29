@@ -1,0 +1,7 @@
+    <section id="chats">
+      <ul>
+        {% for chat in chat_names %}
+        <li><a href="/{{ forloop.index0 }}">{{ chat | escape }}</a></li>
+        {% endfor %}
+      </ul>
+    </section>

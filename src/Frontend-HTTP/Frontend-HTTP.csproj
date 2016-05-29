@@ -61,12 +61,15 @@
     <Compile Include="LogHelper.cs" />
     <Compile Include="MainClass.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Templates.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Templates\_base.html.liquid" />
+    <None Include="Templates\landing.html.liquid" />
+    <None Include="Templates\_chats.liquid" />
     <None Include="Templates\login.html.liquid" />
     <None Include="Templates\chat.html.liquid" />
+    <None Include="Templates\_base.liquid" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj">
