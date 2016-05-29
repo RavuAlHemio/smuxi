@@ -10,7 +10,7 @@ namespace Smuxi.Frontend.Http
     public class HttpAuthenticator
     {
         protected string CookieName =>
-            (Frontend.FrontendConfig["Frontend/" + Frontend.UIName + "/CookieName"] as string)
+            (Frontend.FrontendConfig[Frontend.UIName + "/CookieName"] as string)
             ?? "SmuxiHttpSession";
         protected string CurrentSessionToken { get; set; }
 
@@ -36,7 +36,7 @@ namespace Smuxi.Frontend.Http
             if (queryString.StartsWith("?")) {
                 Dictionary<string, string> query = HttpUtil.DecodeUrlEncodedForm(queryString.Substring(1));
                 if (query.ContainsKey("token")) {
-                    var tokensString = Frontend.FrontendConfig["Frontend/" + Frontend.UIName + "/Tokens"] as string;
+                    var tokensString = Frontend.FrontendConfig[Frontend.UIName + "/Tokens"] as string;
                     if (tokensString != null) {
                         IEnumerable<string> tokensEnumerable = tokensString
                             .Split(',')
@@ -60,8 +60,8 @@ namespace Smuxi.Frontend.Http
 
         public bool Login(HttpListenerResponse response, string username, string password)
         {
-            var expectedUsername = Frontend.FrontendConfig["Frontend/" + Frontend.UIName + "/Username"] as string;
-            var expectedPassword = Frontend.FrontendConfig["Frontend/" + Frontend.UIName + "/Password"] as string;
+            var expectedUsername = Frontend.FrontendConfig[Frontend.UIName + "/Username"] as string;
+            var expectedPassword = Frontend.FrontendConfig[Frontend.UIName + "/Password"] as string;
 
             if (expectedUsername == null || expectedPassword == null) {
                 // no username/password authentication available

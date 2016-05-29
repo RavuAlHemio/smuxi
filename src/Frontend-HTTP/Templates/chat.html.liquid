@@ -1,4 +1,4 @@
-{% include "base.html" %}
+{% extends "base" %}
 {% block title %}{{ chat.name | escape }} &ndash; Smuxi{% endblock %}
 {% block body %}
     <form action="{{ chat_index | escape }}/message" method="post">
@@ -21,7 +21,7 @@
     <section id="chats">
       <ul>
         {% for chat in chats %}
-        <li><a href="/{{ forloop.index0 | escape }}">{{ chat | escape }}</a></li>
+        <li><a href="/{{ forloop.index0 }}">{{ chat | escape }}</a></li>
         {% endfor %}
       </ul>
     </section>
