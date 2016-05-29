@@ -94,7 +94,7 @@ namespace Smuxi.Frontend.Http
         {
             var messageHtml = new StringBuilder();
             messageHtml.AppendFormat("<span class=\"timestamp\">{0}</span> ",
-                WebUtility.HtmlEncode(message.TimeStamp.ToLongTimeString()));
+                WebUtility.HtmlEncode(message.TimeStamp.ToLocalTime().ToLongTimeString()));
 
             foreach (MessagePartModel part in message.MessageParts)
             {
