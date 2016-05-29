@@ -58,9 +58,10 @@ namespace Smuxi.Frontend.Http
                 Name = chat.Name
             };
 
-            var groupModel = chat as GroupChatModel;
-            if (groupModel != null) {
-                ChatFrontends[chat].ReplaceAllParticipants(groupModel.Persons.Values);
+            var groupChat = chat as GroupChatModel;
+            if (groupChat != null) {
+                ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                ChatFrontends[chat].UpdateTopic(groupChat.Topic);
             }
         }
 
@@ -120,6 +121,8 @@ namespace Smuxi.Frontend.Http
         public void UpdateTopicInGroupChat(GroupChatModel groupChat, MessageModel topic)
         {
             Trace.Call(groupChat, topic);
+
+            ChatFrontends[groupChat].UpdateTopic(topic);
         }
 
         public void RemovePersonFromGroupChat(GroupChatModel groupChat, PersonModel person)

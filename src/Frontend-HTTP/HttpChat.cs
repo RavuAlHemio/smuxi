@@ -12,12 +12,14 @@ namespace Smuxi.Frontend.Http
         protected object CollectionsLock { get; }
         public string Name { get; set; }
         protected List<string> HtmlMessages { get; set; }
+        public string HtmlTopic { get; protected set; }
         protected SortedDictionary<string, string> ParticipantNamesToHtmlNames { get; set; }
 
         public HttpChat()
         {
             CollectionsLock = new object();
             HtmlMessages = new List<string>();
+            HtmlTopic = null;
             ParticipantNamesToHtmlNames = null;
         }
 
@@ -43,7 +45,7 @@ namespace Smuxi.Frontend.Http
         {
             lock (CollectionsLock) {
                 HtmlMessages.Clear();
-                HtmlMessages.AddRange(messages.Select(TransformMessage));
+                HtmlMessages.AddRange(messages.Select(m => TransformMessage(m)));
             }
         }
 
@@ -73,6 +75,11 @@ namespace Smuxi.Frontend.Http
             }
         }
 
+        public void UpdateTopic(MessageModel topic)
+        {
+            HtmlTopic = TransformMessage(topic, includeTimestamp: false);
+        }
+
         public List<string> GetHtmlMessages()
         {
             lock (CollectionsLock) {
@@ -90,11 +97,17 @@ namespace Smuxi.Frontend.Http
             }
         }
 
-        public static string TransformMessage(MessageModel message)
+        public static string TransformMessage(MessageModel message, bool includeTimestamp = true)
         {
+            if (message == null) {
+                return "";
+            }
+
             var messageHtml = new StringBuilder();
-            messageHtml.AppendFormat("<span class=\"timestamp\">{0}</span> ",
-                WebUtility.HtmlEncode(message.TimeStamp.ToLocalTime().ToLongTimeString()));
+            if (includeTimestamp) {
+                messageHtml.AppendFormat("<span class=\"timestamp\">{0}</span> ",
+                    WebUtility.HtmlEncode(message.TimeStamp.ToLocalTime().ToLongTimeString()));
+            }
 
             foreach (MessagePartModel part in message.MessageParts)
             {

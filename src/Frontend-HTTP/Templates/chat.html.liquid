@@ -1,6 +1,7 @@
 {% extends "base" %}
 {% block title %}{{ chat.name | escape }} &ndash; Smuxi{% endblock %}
 {% block body %}
+    <section id="topic">{{ chat.topic }}</section>
     <form action="{{ chat_index | escape }}/message" method="post">
       <p>
         <input type="text" name="message" id="message-input" />
