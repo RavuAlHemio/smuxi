@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using DotLiquid;
 using RavuAlHemio.HttpDispatcher;
 using Smuxi.Common;
@@ -83,6 +84,7 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(chat);
             Chats.Remove(chat);
+            ChatFrontends.Remove(chat);
         }
 
         public void SyncChat(ChatModel chat)
@@ -207,7 +209,12 @@ namespace Smuxi.Frontend.Http
                 (string)Frontend.UserConfig["Interface/Entry/CommandCharacter"],
                 keysValues["message"]
             );
-            CommandManager?.Execute(cmd);
+
+            // attempt to process locally
+            if (!ProcessCommand(cmd)) {
+                // send to server
+                CommandManager?.Execute(cmd);
+            }
 
             // redirect back
             Redirect(ctx, $"/{chatIndex.ToString(CultureInfo.InvariantCulture)}");
@@ -362,6 +369,74 @@ namespace Smuxi.Frontend.Http
             // bad; redirect to login and suppress further processing
             Redirect(ctx, "/login");
             return false;
+        }
+
+        protected virtual bool ProcessCommand(CommandModel command)
+        {
+            if (command.IsCommand) {
+                switch (command.Command) {
+                    case "help":
+                        ProcessCommandHelp(command);
+                        return false;  // pass to server
+                    case "close":
+                        ProcessCommandClose(command);
+                        return true;
+                    case "reloadtemplates":
+                        ProcessCommandReloadTemplates(command);
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        protected virtual void ProcessCommandHelp(CommandModel command)
+        {
+            HttpChat httpChat = ChatFrontends[command.Chat];
+            var builder = new MessageBuilder();
+            // TRANSLATOR: this line is used as a label / category for a
+            // list of commands below
+            builder.AppendHeader(_("Frontend Commands"));
+            httpChat.AddMessage(builder.ToMessage());
+
+            string[] help = {
+                "close",
+                "reloadtemplates",
+            };
+
+            foreach (string line in help) {
+                builder = new MessageBuilder();
+                builder.AppendEventPrefix();
+                builder.AppendText(line);
+                httpChat.AddMessage(builder.ToMessage());
+            }
+        }
+
+        protected virtual void ProcessCommandClose(CommandModel command)
+        {
+            ChatModel chat = command.Chat;
+            IProtocolManager protocolManager = chat.ProtocolManager;
+
+            ThreadPool.QueueUserWorkItem(delegate {
+                try {
+                    protocolManager.CloseChat(
+                        Frontend.FrontendManager,
+                        chat
+                    );
+                } catch (Exception ex) {
+                    Logger.Fatal(ex);
+                }
+            });
+        }
+
+        protected virtual void ProcessCommandReloadTemplates(CommandModel command)
+        {
+            Templates.LoadTemplates();
+        }
+
+        static string _(string msg)
+        {
+            return Mono.Unix.Catalog.GetString(msg);
         }
     }
 }

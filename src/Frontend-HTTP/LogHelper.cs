@@ -60,5 +60,20 @@ namespace Smuxi.Frontend.Http
                                arguments);
 #endif
         }
+
+        public void Fatal(object message, Exception ex = null)
+        {
+#if LOG4NET
+            Logger.Fatal(message, ex);
+#endif
+        }
+
+        public void FatalFormat(string format, params object[] arguments)
+        {
+#if LOG4NET
+            Logger.FatalFormat(CultureInfo.InvariantCulture, format,
+                               arguments);
+#endif
+        }
     }
 }
