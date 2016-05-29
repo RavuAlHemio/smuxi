@@ -76,6 +76,10 @@
       <Project>{73DEF91D-03FF-41E3-B2E1-3259AF247CA7}</Project>
       <Name>Common</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Engine-IRC\Engine-IRC.csproj">
+      <Project>{95C1E256-73E7-4AAB-AA0B-405B51F7CF5A}</Project>
+      <Name>Engine-IRC</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Engine\Engine.csproj">
       <Project>{BCD52FCF-B7A8-42FB-AA8D-CF9921FF593E}</Project>
       <Name>Engine</Name>

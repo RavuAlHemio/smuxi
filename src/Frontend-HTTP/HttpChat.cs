@@ -35,7 +35,7 @@ namespace Smuxi.Frontend.Http
                     ParticipantNamesToHtmlNames = new SortedDictionary<string, string>();
                 }
 
-                ParticipantNamesToHtmlNames[person.IdentityName] = TransformNickname(person.IdentityNameColored);
+                ParticipantNamesToHtmlNames[person.IdentityName] = TransformNickname(person);
             }
         }
 
@@ -57,7 +57,7 @@ namespace Smuxi.Frontend.Http
                 }
 
                 foreach (PersonModel person in persons) {
-                    ParticipantNamesToHtmlNames[person.IdentityName] = TransformNickname(person.IdentityNameColored);
+                    ParticipantNamesToHtmlNames[person.IdentityName] = TransformNickname(person);
                 }
             }
         }
@@ -136,11 +136,31 @@ namespace Smuxi.Frontend.Http
             return "";
         }
 
-        public static string TransformNickname(TextMessagePartModel nick)
+        public static string TransformNickname(PersonModel person)
         {
+            string sigil = "";
+
+            var ircGroupPerson = person as IrcGroupPersonModel;
+            if (ircGroupPerson != null) {
+                if (ircGroupPerson.IsOwner) {
+                    sigil = "<span class=\"sigil owner\">~</span>";
+                } else if (ircGroupPerson.IsChannelAdmin) {
+                    sigil = "<span class=\"sigil channel-admin\">&amp;</span>";
+                } else if (ircGroupPerson.IsOp) {
+                    sigil = "<span class=\"sigil op\">@</span>";
+                } else if (ircGroupPerson.IsHalfop) {
+                    sigil = "<span class=\"sigil halfop\">%</span>";
+                } else if (ircGroupPerson.IsVoice) {
+                    sigil = "<span class=\"sigil voice\">+</span>";
+                } else {
+                    sigil = "<span class=\"sigil none\"></span>";
+                }
+            }
+
+            TextMessagePartModel nick = person.IdentityNameColored;
             string bracketColor = nick.BackgroundColor.HexCode;
             string nickColor = nick.ForegroundColor.HexCode;
-            return $"<span class=\"nickname-bracket\" style=\"color:#{bracketColor}\">&lt;</span><span class=\"nickname\" style=\"color:#{nickColor}\">{WebUtility.HtmlEncode(nick.Text)}</span><span class=\"nickname-bracket\" style=\"color:#{bracketColor}\">&gt;</span>";
+            return $"{sigil}<span class=\"nickname-bracket\" style=\"color:#{bracketColor}\">&lt;</span><span class=\"nickname\" style=\"color:#{nickColor}\">{WebUtility.HtmlEncode(nick.Text)}</span><span class=\"nickname-bracket\" style=\"color:#{bracketColor}\">&gt;</span>";
         }
 
         public static string TextMessagePartStyle(TextMessagePartModel text)
