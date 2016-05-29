@@ -1,4 +1,5 @@
 ﻿module Smuxi {
+    export var performMessageUpdate: boolean = true;
     var messageUpdateRunning: boolean = false;
 
     export function initMessageRefresh(): void {
@@ -28,6 +29,8 @@
         messageUpdateRunning = false;
 
         var messagesElement = document.getElementById('messages');
-        messagesElement.innerHTML = xhr.response;
+        if (performMessageUpdate) {
+            messagesElement.innerHTML = xhr.response;
+        }
     }
 }
