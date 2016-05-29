@@ -9,9 +9,7 @@ namespace Smuxi.Frontend.Http
 {
     public class HttpAuthenticator
     {
-        protected string CookieName =>
-            (Frontend.FrontendConfig[Frontend.UIName + "/CookieName"] as string)
-            ?? "SmuxiHttpSession";
+        protected string CookieName => (string) Frontend.FrontendConfig[Frontend.UIName + "/CookieName"];
         protected string CurrentSessionToken { get; set; }
 
         public HttpAuthenticator()
@@ -63,7 +61,8 @@ namespace Smuxi.Frontend.Http
             var expectedUsername = Frontend.FrontendConfig[Frontend.UIName + "/Username"] as string;
             var expectedPassword = Frontend.FrontendConfig[Frontend.UIName + "/Password"] as string;
 
-            if (expectedUsername == null || expectedPassword == null) {
+            if (String.IsNullOrWhiteSpace(expectedUsername) ||
+                String.IsNullOrWhiteSpace(expectedPassword)) {
                 // no username/password authentication available
                 return false;
             }

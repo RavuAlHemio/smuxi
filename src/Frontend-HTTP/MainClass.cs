@@ -10,11 +10,7 @@ namespace Smuxi.Frontend.Http
     {
         public static void Main()
         {
-            // FIXME
-            const string uriPrefix = "http://+:8080/";
-            const string engine = "dbowncloud";
-
-            Frontend.Init(engine, uriPrefix);
+            Frontend.Init();
 
             Console.WriteLine("Press Enter or Escape to exit.");
             for (;;) {

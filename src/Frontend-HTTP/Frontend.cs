@@ -20,15 +20,40 @@ namespace Smuxi.Frontend.Http
         public static string UIName => "HTTP";
         public static UserConfig UserConfig { get; private set; }
 
-        public static void Init(string engine, string uriPrefix)
+        public static void Init()
         {
             Thread.CurrentThread.Name = "Main";
-            Trace.Call(engine);
-
-            HttpUI = new HttpUI(uriPrefix);
+            Trace.Call();
 
             FrontendConfig = new FrontendConfig(UIName);
             FrontendConfig.Load();
+
+            // set defaults
+            if (FrontendConfig[UIName + "/CookieName"] == null) {
+                FrontendConfig[UIName + "/CookieName"] = "SmuxiHttpSession";
+            }
+            if (FrontendConfig[UIName + "/Engine"] == null) {
+                FrontendConfig[UIName + "/Engine"] = "local";
+            }
+            if (FrontendConfig[UIName + "/Password"] == null) {
+                FrontendConfig[UIName + "/Password"] = "";
+            }
+            if (FrontendConfig[UIName + "/Tokens"] == null) {
+                FrontendConfig[UIName + "/Tokens"] = "";
+            }
+            if (FrontendConfig[UIName + "/UriPrefix"] == null) {
+                FrontendConfig[UIName + "/UriPrefix"] = "http://+:8080/";
+            }
+            if (FrontendConfig[UIName + "/Username"] == null) {
+                FrontendConfig[UIName + "/Username"] = "";
+            }
+
+            FrontendConfig.Save();
+
+            string engine = (string) FrontendConfig[UIName + "/Engine"];
+            string uriPrefix = (string) FrontendConfig[UIName + "/UriPrefix"];
+
+            HttpUI = new HttpUI(uriPrefix);
 
             if (FrontendConfig.IsCleanConfig) {
                 Console.Error.WriteLine(
