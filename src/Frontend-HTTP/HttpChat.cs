@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -105,8 +106,14 @@ namespace Smuxi.Frontend.Http
 
             var messageHtml = new StringBuilder();
             if (includeTimestamp) {
+                string customTimestampFormat =
+                    Frontend.FrontendConfig[Frontend.UIName + "/CustomTimestampFormat"] as string;
+                DateTime localTimestamp = message.TimeStamp.ToLocalTime();
+                string localTimestampString = (customTimestampFormat == null)
+                    ? localTimestamp.ToLongTimeString()
+                    : localTimestamp.ToString(customTimestampFormat, CultureInfo.InvariantCulture);
                 messageHtml.AppendFormat("<span class=\"timestamp\">{0}</span> ",
-                    WebUtility.HtmlEncode(message.TimeStamp.ToLocalTime().ToLongTimeString()));
+                    WebUtility.HtmlEncode(localTimestampString));
             }
 
             foreach (MessagePartModel part in message.MessageParts)
