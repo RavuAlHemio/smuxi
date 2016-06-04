@@ -52,6 +52,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CircleBuffer.cs" />
     <Compile Include="Drops\ChatDrop.cs" />
     <Compile Include="Frontend.cs" />
     <Compile Include="HttpAuthenticator.cs" />

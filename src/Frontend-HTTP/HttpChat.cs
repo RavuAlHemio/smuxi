@@ -12,14 +12,14 @@ namespace Smuxi.Frontend.Http
     {
         protected object CollectionsLock { get; }
         public string Name { get; set; }
-        protected List<string> HtmlMessages { get; set; }
+        protected CircleBuffer<string> HtmlMessages { get; set; }
         public string HtmlTopic { get; protected set; }
         protected SortedDictionary<string, string> ParticipantNamesToHtmlNames { get; set; }
 
         public HttpChat()
         {
             CollectionsLock = new object();
-            HtmlMessages = new List<string>();
+            HtmlMessages = new CircleBuffer<string>(512);
             HtmlTopic = null;
             ParticipantNamesToHtmlNames = null;
         }
