@@ -261,6 +261,30 @@ namespace Smuxi.Frontend.Http
                 ReturnNotFound(ctx);
                 return;
             }
+            DateTime lastWritten = File.GetLastWriteTimeUtc(target);
+
+            DateTime? ifModifiedSince = null;
+            if (ctx.Request.Headers["If-Modified-Since"] != null) {
+                DateTime parsed;
+                if (DateTime.TryParseExact(ctx.Request.Headers["If-Modified-Since"],
+                                           "r", CultureInfo.InvariantCulture,
+                                           DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                                           out parsed)) {
+                    ifModifiedSince = parsed;
+                }
+            }
+
+            if (ifModifiedSince.HasValue) {
+                if (lastWritten <= ifModifiedSince.Value) {
+                    // Not Modified
+                    ctx.Response.StatusCode = 304;
+                    ctx.Response.Close();
+                    return;
+                }
+            }
+
+            ctx.Response.Headers[HttpResponseHeader.LastModified] =
+                lastWritten.ToString("r", CultureInfo.InvariantCulture);
 
             string mimeType;
             if (!ExtensionsToMimeTypes.TryGetValue(Path.GetExtension(fileName), out mimeType)) {
