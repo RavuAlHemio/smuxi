@@ -26,6 +26,7 @@ button {
 
 .message, #participants > ul > li {
     margin-bottom: 0.2em;
+    white-space: pre-wrap;
 }
 
 #participants > ul > li {
