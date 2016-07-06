@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="CircleBuffer.cs" />
     <Compile Include="Drops\ChatDrop.cs" />
+    <Compile Include="Drops\ChatTabDrop.cs" />
     <Compile Include="Frontend.cs" />
     <Compile Include="HttpAuthenticator.cs" />
     <Compile Include="HttpChat.cs" />

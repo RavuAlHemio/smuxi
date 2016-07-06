@@ -55,7 +55,9 @@ namespace Smuxi.Frontend.Http
             Chats.Add(chat);
             ChatFrontends[chat] = new HttpChat
             {
-                Name = chat.Name
+                Name = chat.Name,
+                IsSystemChat = (chat.ChatType == ChatType.Session
+                                || chat.ChatType == ChatType.Protocol)
             };
 
             var groupChat = chat as GroupChatModel;
@@ -149,10 +151,12 @@ namespace Smuxi.Frontend.Http
                 return;
             }
 
-            List<string> chatNames = Chats.Select(c => c.Name).ToList();
+            List<ChatTabDrop> chats = Chats
+                .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
+                .ToList();
             string result = Templates.LandingPage.Render(Hash.FromAnonymousObject(new
             {
-                chat_names = chatNames
+                chat_tabs = chats
             }));
 
             ReturnHtml(ctx, result);
@@ -172,12 +176,20 @@ namespace Smuxi.Frontend.Http
 
             HttpChat chat = ChatFrontends[Chats[chatIndex]];
             ChatDrop chatDrop = new ChatDrop(chat);
+            List<ChatTabDrop> chats = Chats
+                .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
+                .ToList();
+            List<ChatTabDrop> highlightedChats = Chats
+                .Select((c, i) => Tuple.Create(ChatFrontends[c], i))
+                .Where(t => t.Item1.UnseenHighlightMessages > 0)
+                .Select(t => new ChatTabDrop(t.Item2, t.Item1))
+                .ToList();
 
-            List<string> chatNames = Chats.Select(c => c.Name).ToList();
             string result = Templates.ChatPage.Render(Hash.FromAnonymousObject(new
             {
                 chat = chatDrop,
-                chat_names = chatNames,
+                chat_tabs = chats,
+                highlighted_chat_tabs = highlightedChats,
                 chat_index = chatIndex.ToString(CultureInfo.InvariantCulture)
             }));
 
@@ -237,6 +249,10 @@ namespace Smuxi.Frontend.Http
 
             HttpChat chat = ChatFrontends[Chats[chatIndex]];
             ChatDrop chatDrop = new ChatDrop(chat);
+
+            // mark messages of this chat as seen
+            chat.UnseenMessages = 0;
+            chat.UnseenHighlightMessages = 0;
 
             var messages = new StringBuilder();
             foreach (string message in chatDrop.Messages) {

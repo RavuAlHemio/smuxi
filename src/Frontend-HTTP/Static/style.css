@@ -18,7 +18,7 @@ button {
     width: 100%;
 }
 
-#participants > ul, #chats > ul {
+#participants > ul, .chats > ul {
     margin: 0;
     padding: 0;
     list-style: none;
@@ -33,16 +33,20 @@ button {
     white-space: nowrap;
 }
 
-#chats > ul > li {
+.chats > ul > li {
     display: inline;
 }
 
-#chats > ul > li::before {
+.chats > ul > li::before {
     content: "\0000B7  ";
 }
 
-#chats > ul > li:first-child::before {
+.chats > ul > li:first-child::before {
     content: "";
+}
+
+.chats > ul > li.highlighted > a {
+    color: red;
 }
 
 .sigil {

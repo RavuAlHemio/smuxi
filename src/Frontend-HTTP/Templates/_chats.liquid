@@ -1,7 +1,9 @@
-    <section id="chats">
+    <section id="{{ chats_section_id | escape }}" class="chats">
       <ul>
-        {% for chat in chat_names %}
-        <li><a href="/{{ forloop.index0 }}">{{ chat | escape }}</a></li>
+        {% for chat in chats_to_list %}
+          {% if chat.unseen_highlight_msgs > 0 %}<li class="highlighted">{% else %}<li>{% endif %}
+            <a href="/{{ chat.index }}">{{ chat.name | escape }}{% if chat.unseen_highlight_msgs > 0 or chat.unseen_msgs > 0 %} <span class="unseen-msgs">({% if chat.unseen_highlight_msgs > 0 %}{{ chat.unseen_highlight_msgs }}{% else %}{{ chat.unseen_msgs }}{% endif %})</span>{% endif %}</a>
+          </li>
         {% endfor %}
       </ul>
     </section>

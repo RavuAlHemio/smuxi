@@ -15,6 +15,9 @@ namespace Smuxi.Frontend.Http
         protected CircleBuffer<string> HtmlMessages { get; set; }
         public string HtmlTopic { get; protected set; }
         protected SortedDictionary<string, string> ParticipantNamesToHtmlNames { get; set; }
+        public int UnseenMessages { get; set; }
+        public int UnseenHighlightMessages { get; set; }
+        public bool IsSystemChat { get; set; }
 
         public HttpChat()
         {
@@ -22,12 +25,28 @@ namespace Smuxi.Frontend.Http
             HtmlMessages = new CircleBuffer<string>(512);
             HtmlTopic = null;
             ParticipantNamesToHtmlNames = null;
+            UnseenMessages = 0;
+            UnseenHighlightMessages = 0;
+            IsSystemChat = false;
         }
 
         public void AddMessage(MessageModel message)
         {
             lock (CollectionsLock) {
                 HtmlMessages.Add(TransformMessage(message));
+            }
+
+            if (message.MessageType == MessageType.Normal) {
+                if (ParticipantNamesToHtmlNames == null && !IsSystemChat) {
+                    // private chat; count this as a highlight message
+                    ++UnseenHighlightMessages;
+                } else if (message.MessageParts.Any(p => p.IsHighlight)) {
+                    // highlighted in this message
+                    ++UnseenHighlightMessages;
+                } else {
+                    // regular message
+                    ++UnseenMessages;
+                }
             }
         }
 

@@ -1,5 +1,7 @@
 {% extends "base" %}
 {% block title %}Smuxi{% endblock %}
 {% block body %}
+    {% assign chats_section_id = 'chats' %}
+    {% assign chats_to_list = chat_tabs %}
     {% include "chats" %}
 {% endblock %}

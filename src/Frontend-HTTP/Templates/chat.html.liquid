@@ -1,6 +1,9 @@
 {% extends "base" %}
 {% block title %}{{ chat.name | escape }} &ndash; Smuxi{% endblock %}
 {% block body %}
+    {% assign chats_section_id = 'highlighted-chats' %}
+    {% assign chats_to_list = highlighted_chat_tabs %}
+    {% include "chats" %}
     <section id="topic">{{ chat.topic }}</section>
     <form action="{{ chat_index | escape }}/message" method="post">
       <p>
@@ -19,6 +22,8 @@
         </ul>
       </section>
     </section>
+    {% assign chats_section_id = 'chats' %}
+    {% assign chats_to_list = chat_tabs %}
     {% include "chats" %}
     <script type="text/javascript">
       Smuxi.initMessageRefresh();
