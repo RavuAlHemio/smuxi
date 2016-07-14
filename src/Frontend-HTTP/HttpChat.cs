@@ -149,9 +149,13 @@ namespace Smuxi.Frontend.Http
             if (urlPart?.Url != null)
             {
                 var style = TextMessagePartStyle(urlPart);
-                return String.Format("<a href=\"{0}\" style=\"{1}\">{0}</a>",
+                string textOrUrl = string.IsNullOrEmpty(urlPart.Text)
+                    ? urlPart.Url
+                    : urlPart.Text;
+                return String.Format("<a href=\"{0}\" style=\"{1}\">{2}</a>",
                     WebUtility.HtmlEncode(urlPart.Url),
-                    style);
+                    style,
+                    WebUtility.HtmlEncode(textOrUrl));
             }
 
             var textPart = part as TextMessagePartModel;
