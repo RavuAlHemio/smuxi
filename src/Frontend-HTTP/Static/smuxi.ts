@@ -17,7 +17,9 @@
 
         messageUpdateRunning = true;
 
-        var endpoint: string = window.location.href + "/messages";
+        var location: Location = window.location;
+        // http://localhost:1234/12 -> http://localhost:1234/12/messages
+        var endpoint: string = `${location.protocol}//${location.host}${location.pathname}/messages${location.search}`;
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET", endpoint, true);
