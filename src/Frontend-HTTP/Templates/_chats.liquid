@@ -1,4 +1,7 @@
     <section id="{{ chats_section_id | escape }}" class="chats">
+      {% if chats_down_link_target != null %}
+        <a class="chats-down-link" href="{{ chats_down_link_target | escape }}">&#8595;</a>
+      {% endif %}
       <ul>
         {% for chat in chats_to_list %}
           {% if chat.unseen_highlight_msgs > 0 %}<li class="highlighted">{% else %}<li>{% endif %}
