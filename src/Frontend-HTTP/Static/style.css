@@ -29,6 +29,10 @@ button {
     white-space: pre-wrap;
 }
 
+.message.event-message, .message.other-message {
+    opacity: 0.8;
+}
+
 #participants > ul > li {
     white-space: nowrap;
 }

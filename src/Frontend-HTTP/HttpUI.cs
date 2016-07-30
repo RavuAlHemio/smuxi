@@ -254,14 +254,7 @@ namespace Smuxi.Frontend.Http
             chat.UnseenMessages = 0;
             chat.UnseenHighlightMessages = 0;
 
-            var messages = new StringBuilder();
-            foreach (string message in chatDrop.Messages) {
-                messages.Append("<div class=\"message\">");
-                messages.Append(message);
-                messages.Append("</div>\r\n");
-            }
-            
-            ReturnHtml(ctx, messages.ToString());
+            ReturnHtml(ctx, String.Concat(chatDrop.Messages));
         }
 
         [Endpoint("/static/{fileName}", Method = "GET")]

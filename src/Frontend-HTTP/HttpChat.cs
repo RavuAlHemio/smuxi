@@ -97,7 +97,7 @@ namespace Smuxi.Frontend.Http
 
         public void UpdateTopic(MessageModel topic)
         {
-            HtmlTopic = TransformMessage(topic, includeTimestamp: false);
+            HtmlTopic = TransformMessage(topic, includeTimestamp: false, divWrap: false);
         }
 
         public List<string> GetHtmlMessages()
@@ -117,13 +117,29 @@ namespace Smuxi.Frontend.Http
             }
         }
 
-        public static string TransformMessage(MessageModel message, bool includeTimestamp = true)
+        public static string TransformMessage(MessageModel message, bool includeTimestamp = true, bool divWrap = true)
         {
             if (message == null) {
                 return "";
             }
 
             var messageHtml = new StringBuilder();
+            if (divWrap) {
+                string messageClass;
+                switch (message.MessageType) {
+                    case MessageType.Normal:
+                        messageClass = "normal-message";
+                        break;
+                    case MessageType.Event:
+                        messageClass = "event-message";
+                        break;
+                    default:
+                        messageClass = "other-message";
+                        break;
+                }
+                messageHtml.AppendFormat("<div class=\"message {0}\">", messageClass);
+            }
+
             if (includeTimestamp) {
                 string customTimestampFormat =
                     Frontend.FrontendConfig[Frontend.UIName + "/CustomTimestampFormat"] as string;
@@ -135,9 +151,12 @@ namespace Smuxi.Frontend.Http
                     WebUtility.HtmlEncode(localTimestampString));
             }
 
-            foreach (MessagePartModel part in message.MessageParts)
-            {
+            foreach (MessagePartModel part in message.MessageParts) {
                 messageHtml.Append(TransformMessagePart(part));
+            }
+
+            if (divWrap) {
+                messageHtml.Append("</div>\r\n");
             }
 
             return messageHtml.ToString();
@@ -146,8 +165,7 @@ namespace Smuxi.Frontend.Http
         public static string TransformMessagePart(MessagePartModel part)
         {
             var urlPart = part as UrlMessagePartModel;
-            if (urlPart?.Url != null)
-            {
+            if (urlPart?.Url != null) {
                 var style = TextMessagePartStyle(urlPart);
                 string textOrUrl = string.IsNullOrEmpty(urlPart.Text)
                     ? urlPart.Url
@@ -159,8 +177,7 @@ namespace Smuxi.Frontend.Http
             }
 
             var textPart = part as TextMessagePartModel;
-            if (textPart != null)
-            {
+            if (textPart != null) {
                 var style = TextMessagePartStyle(textPart);
                 if (style.Length > 0)
                 {
@@ -170,8 +187,7 @@ namespace Smuxi.Frontend.Http
             }
 
             var imagePart = part as ImageMessagePartModel;
-            if (imagePart != null)
-            {
+            if (imagePart != null) {
                 // FIXME: alt text only
                 return $"<span class=\"image-substitute\">{WebUtility.HtmlEncode(imagePart.AlternativeText)}</span>";
             }
@@ -209,24 +225,19 @@ namespace Smuxi.Frontend.Http
         public static string TextMessagePartStyle(TextMessagePartModel text)
         {
             var stylings = new Dictionary<string, string>();
-            if (text.Bold)
-            {
+            if (text.Bold) {
                 stylings["font-weight"] = "bold";
             }
-            if (text.Italic)
-            {
+            if (text.Italic) {
                 stylings["font-style"] = "italic";
             }
-            if (text.Underline)
-            {
+            if (text.Underline) {
                 stylings["text-decoration"] = "underline";
             }
-            if (text.BackgroundColor != TextColor.None)
-            {
+            if (text.BackgroundColor != TextColor.None) {
                 stylings["background-color"] = "#" + text.BackgroundColor.HexCode;
             }
-            if (text.ForegroundColor != TextColor.None)
-            {
+            if (text.ForegroundColor != TextColor.None) {
                 stylings["color"] = "#" + text.ForegroundColor.HexCode;
             }
             return String.Join(";", stylings.Select(
