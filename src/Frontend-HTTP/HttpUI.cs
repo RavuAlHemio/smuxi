@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -344,37 +345,37 @@ namespace Smuxi.Frontend.Http
             Redirect(ctx, "/login");
         }
 
-        protected void ReturnNotFound(HttpListenerContext ctx)
+        protected static void ReturnNotFound(HttpListenerContext ctx)
         {
             ReturnPlainText(ctx, "Not found.", 404);
         }
 
-        protected void ReturnBadRequest(HttpListenerContext ctx, string errorText = "Bad request.")
+        protected static void ReturnBadRequest(HttpListenerContext ctx, string errorText = "Bad request.")
         {
             ReturnPlainText(ctx, errorText, 400);
         }
 
-        protected void ReturnPlainText(HttpListenerContext ctx, string message, int code = 200)
+        protected static void ReturnPlainText(HttpListenerContext ctx, string message, int code = 200)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(message);
 
             ctx.Response.StatusCode = code;
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.ContentType = "text/plain; charset=utf-8";
-            ctx.Response.Close(bytes, willBlock: true);
+            CompressWriteCloseResponse(ctx, bytes);
         }
 
-        protected void ReturnHtml(HttpListenerContext ctx, string html, int code = 200)
+        protected static void ReturnHtml(HttpListenerContext ctx, string html, int code = 200)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(html);
 
             ctx.Response.StatusCode = code;
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.ContentType = "text/html; charset=utf-8";
-            ctx.Response.Close(bytes, willBlock: true);
+            CompressWriteCloseResponse(ctx, bytes);
         }
 
-        protected void Redirect(HttpListenerContext ctx, string target, int code = 303)
+        protected static void Redirect(HttpListenerContext ctx, string target, int code = 303)
         {
             Uri currentUrl = HttpUtil.GetHttpListenerRequestUri(ctx.Request);
             var targetUrl = new Uri(currentUrl, target);
@@ -385,7 +386,7 @@ namespace Smuxi.Frontend.Http
             ctx.Response.Close();
         }
 
-        protected string ReadRequestBody(Stream requestStream)
+        protected static string ReadRequestBody(Stream requestStream)
         {
             string query;
             using (var storage = new MemoryStream()) {
@@ -393,6 +394,41 @@ namespace Smuxi.Frontend.Http
                 query = Encoding.UTF8.GetString(storage.ToArray());
             }
             return query;
+        }
+
+        protected static void CompressWriteCloseResponse(HttpListenerContext ctx, byte[] body)
+        {
+            // compression?
+            var acceptedEncodingsEnumerable = ctx.Request.Headers["Accept-Encoding"]
+                ?.Split(',')
+                .Select(e => e.Trim().Split(';').First());
+            var acceptedEncodings = (acceptedEncodingsEnumerable != null)
+                ? new HashSet<string>(acceptedEncodingsEnumerable)
+                : new HashSet<string>();
+
+            byte[] bytesToSend;
+            if (acceptedEncodings.Contains("gzip")) {
+                using (var ms = new MemoryStream()) {
+                    using (var zipper = new GZipStream(ms, CompressionMode.Compress)) {
+                        zipper.Write(body, 0, body.Length);
+                    }
+                    ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
+                    bytesToSend = ms.ToArray();
+                }
+            } else if (acceptedEncodings.Contains("deflate")) {
+                using (var ms = new MemoryStream()) {
+                    using (var deflater = new DeflateStream(ms, CompressionMode.Compress)) {
+                        deflater.Write(body, 0, body.Length);
+                    }
+                    ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
+                    bytesToSend = ms.ToArray();
+                }
+            } else {
+                ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "identity";
+                bytesToSend = body;
+            }
+
+            ctx.Response.Close(bytesToSend, willBlock: false);
         }
 
         protected virtual bool AssertLoggedIn(HttpListenerContext ctx)
