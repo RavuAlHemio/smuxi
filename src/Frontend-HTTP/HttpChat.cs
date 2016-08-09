@@ -173,7 +173,7 @@ namespace Smuxi.Frontend.Http
                 return String.Format("<a href=\"{0}\" style=\"{1}\">{2}</a>",
                     WebUtility.HtmlEncode(urlPart.Url),
                     style,
-                    WebUtility.HtmlEncode(textOrUrl));
+                    WithBreakOpportunities(WebUtility.HtmlEncode(textOrUrl)));
             }
 
             var textPart = part as TextMessagePartModel;
@@ -242,6 +242,15 @@ namespace Smuxi.Frontend.Http
             }
             return String.Join(";", stylings.Select(
                 s => $"{s.Key}:{s.Value}"));
+        }
+
+        public static string WithBreakOpportunities(string input)
+        {
+            return input
+                .Replace("?", "<wbr/>?")
+                .Replace("/", "<wbr/>/")
+                .Replace("&amp;", "<wbr/>&amp;")
+                .Replace("#", "<wbr/>#");
         }
     }
 }
