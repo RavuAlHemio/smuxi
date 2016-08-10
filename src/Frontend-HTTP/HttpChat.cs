@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using Smuxi.Engine;
 
 namespace Smuxi.Frontend.Http
@@ -18,6 +19,8 @@ namespace Smuxi.Frontend.Http
         public int UnseenMessages { get; set; }
         public int UnseenHighlightMessages { get; set; }
         public bool IsSystemChat { get; set; }
+
+        protected static readonly Regex BreakOpportunityRegex = new Regex("[?/#]|&amp;", RegexOptions.Compiled);
 
         public HttpChat()
         {
@@ -246,11 +249,7 @@ namespace Smuxi.Frontend.Http
 
         public static string WithBreakOpportunities(string input)
         {
-            return input
-                .Replace("?", "<wbr/>?")
-                .Replace("/", "<wbr/>/")
-                .Replace("&amp;", "<wbr/>&amp;")
-                .Replace("#", "<wbr/>#");
+            return BreakOpportunityRegex.Replace(input, "<wbr/>$&");
         }
     }
 }
