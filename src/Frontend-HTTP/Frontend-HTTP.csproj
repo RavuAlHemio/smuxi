@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Smuxi.Frontend.Http</RootNamespace>
     <AssemblyName>smuxi-frontend-http</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -142,8 +142,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\lib\Mono.Posix.dll</HintPath>
     </Reference>
-    <Reference Include="RavuAlHemio.HttpDispatcher.Kestrel, Version=0.0.20.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RavuAlHemio.HttpDispatcher.Kestrel.0.0.20\lib\net46\RavuAlHemio.HttpDispatcher.Kestrel.dll</HintPath>
+    <Reference Include="RavuAlHemio.HttpDispatcher.Kestrel, Version=0.0.21.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RavuAlHemio.HttpDispatcher.Kestrel.0.0.21\lib\net451\RavuAlHemio.HttpDispatcher.Kestrel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
