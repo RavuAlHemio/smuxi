@@ -4,11 +4,12 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using DotLiquid;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using RavuAlHemio.HttpDispatcher;
 using RavuAlHemio.HttpDispatcher.Kestrel;
 using Smuxi.Common;
@@ -147,7 +148,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/", Method = "GET")]
-        public void LandingPage(HttpListenerContext ctx)
+        public void LandingPage(HttpContext ctx)
         {
             if (!AssertLoggedIn(ctx)) {
                 return;
@@ -165,7 +166,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/{chatIndex}", Method = "GET")]
-        public void ChatPage(HttpListenerContext ctx, int chatIndex)
+        public void ChatPage(HttpContext ctx, int chatIndex)
         {
             if (!AssertLoggedIn(ctx)) {
                 return;
@@ -199,7 +200,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/{chatIndex}/message", Method = "POST")]
-        public void PostMessage(HttpListenerContext ctx, int chatIndex)
+        public void PostMessage(HttpContext ctx, int chatIndex)
         {
             if (!AssertLoggedIn(ctx)) {
                 return;
@@ -212,7 +213,7 @@ namespace Smuxi.Frontend.Http
 
             ChatModel chat = Chats[chatIndex];
 
-            string query = ReadRequestBody(ctx.Request.InputStream);
+            string query = ReadRequestBody(ctx.Request.Body);
             Dictionary<string, string> keysValues = HttpUtil.DecodeUrlEncodedForm(query);
 
             if (!keysValues.ContainsKey("message") || string.IsNullOrEmpty(keysValues["message"])) {
@@ -238,7 +239,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/{chatIndex}/messages", Method = "GET")]
-        public void MessagesFragment(HttpListenerContext ctx, int chatIndex)
+        public void MessagesFragment(HttpContext ctx, int chatIndex)
         {
             if (!AssertLoggedIn(ctx)) {
                 return;
@@ -260,7 +261,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/static/{fileName}", Method = "GET")]
-        public void StaticFile(HttpListenerContext ctx, string fileName)
+        public void StaticFile(HttpContext ctx, string fileName)
         {
             if (fileName.Contains('/') || fileName.Contains('\\')) {
                 ReturnNotFound(ctx);
@@ -275,7 +276,7 @@ namespace Smuxi.Frontend.Http
             DateTime lastWritten = File.GetLastWriteTimeUtc(target);
 
             DateTime? ifModifiedSince = null;
-            if (ctx.Request.Headers["If-Modified-Since"] != null) {
+            if (ctx.Request.Headers.ContainsKey("If-Modified-Since")) {
                 DateTime parsed;
                 if (DateTime.TryParseExact(ctx.Request.Headers["If-Modified-Since"],
                                            "r", CultureInfo.InvariantCulture,
@@ -289,12 +290,11 @@ namespace Smuxi.Frontend.Http
                 if (lastWritten <= ifModifiedSince.Value) {
                     // Not Modified
                     ctx.Response.StatusCode = 304;
-                    ctx.Response.Close();
                     return;
                 }
             }
 
-            ctx.Response.Headers[HttpResponseHeader.LastModified] =
+            ctx.Response.Headers["Last-Modified"] =
                 lastWritten.ToString("r", CultureInfo.InvariantCulture);
 
             string mimeType;
@@ -306,25 +306,24 @@ namespace Smuxi.Frontend.Http
             using (var reading = new FileStream(target, FileMode.Open,
                                                 FileAccess.Read, FileShare.Read)) {
                 if (reading.CanSeek) {
-                    ctx.Response.ContentLength64 = reading.Length;
+                    ctx.Response.ContentLength = reading.Length;
                 }
-                reading.CopyTo(ctx.Response.OutputStream);
+                reading.CopyTo(ctx.Response.Body);
             }
-            ctx.Response.Close();
         }
 
         [Endpoint("/login", Method = "GET")]
-        public void LoginForm(HttpListenerContext ctx)
+        public void LoginForm(HttpContext ctx)
         {
             string result = Templates.LoginPage.Render();
             ReturnHtml(ctx, result);
         }
 
         [Endpoint("/login", Method = "POST")]
-        public void ProcessLogin(HttpListenerContext ctx)
+        public void ProcessLogin(HttpContext ctx)
         {
             // read in the request
-            string query = ReadRequestBody(ctx.Request.InputStream);
+            string query = ReadRequestBody(ctx.Request.Body);
             
             // attempt login
             if (Authenticator.Login(ctx.Response, query)) {
@@ -338,7 +337,7 @@ namespace Smuxi.Frontend.Http
 
         [Endpoint("/logout", Method = "GET")]
         [Endpoint("/logout", Method = "POST")]
-        public void Logout(HttpListenerContext ctx)
+        public void Logout(HttpContext ctx)
         {
             Authenticator.Logout();
 
@@ -346,45 +345,44 @@ namespace Smuxi.Frontend.Http
             Redirect(ctx, "/login");
         }
 
-        protected static void ReturnNotFound(HttpListenerContext ctx)
+        protected static void ReturnNotFound(HttpContext ctx)
         {
             ReturnPlainText(ctx, "Not found.", 404);
         }
 
-        protected static void ReturnBadRequest(HttpListenerContext ctx, string errorText = "Bad request.")
+        protected static void ReturnBadRequest(HttpContext ctx, string errorText = "Bad request.")
         {
             ReturnPlainText(ctx, errorText, 400);
         }
 
-        protected static void ReturnPlainText(HttpListenerContext ctx, string message, int code = 200)
+        protected static void ReturnPlainText(HttpContext ctx, string message, int code = 200)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(message);
 
             ctx.Response.StatusCode = code;
-            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.ContentLength = bytes.Length;
             ctx.Response.ContentType = "text/plain; charset=utf-8";
             CompressWriteCloseResponse(ctx, bytes);
         }
 
-        protected static void ReturnHtml(HttpListenerContext ctx, string html, int code = 200)
+        protected static void ReturnHtml(HttpContext ctx, string html, int code = 200)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(html);
 
             ctx.Response.StatusCode = code;
-            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.ContentLength = bytes.Length;
             ctx.Response.ContentType = "text/html; charset=utf-8";
             CompressWriteCloseResponse(ctx, bytes);
         }
 
-        protected static void Redirect(HttpListenerContext ctx, string target, int code = 303)
+        protected static void Redirect(HttpContext ctx, string target, int code = 303)
         {
-            Uri currentUrl = HttpUtil.GetHttpListenerRequestUri(ctx.Request);
+            var currentUrl = new Uri(ctx.Request.GetEncodedUrl());
             var targetUrl = new Uri(currentUrl, target);
 
             ctx.Response.StatusCode = code;
-            ctx.Response.ContentLength64 = 0;
-            ctx.Response.RedirectLocation = targetUrl.AbsoluteUri;
-            ctx.Response.Close();
+            ctx.Response.ContentLength = 0;
+            ctx.Response.Headers["Location"] = targetUrl.AbsoluteUri;
         }
 
         protected static string ReadRequestBody(Stream requestStream)
@@ -397,10 +395,10 @@ namespace Smuxi.Frontend.Http
             return query;
         }
 
-        protected static void CompressWriteCloseResponse(HttpListenerContext ctx, byte[] body)
+        protected static void CompressWriteCloseResponse(HttpContext ctx, byte[] body)
         {
             // compression?
-            var acceptedEncodingsEnumerable = ctx.Request.Headers["Accept-Encoding"]
+            var acceptedEncodingsEnumerable = ctx.Request.Headers["Accept-Encoding"].SingleOrDefault()
                 ?.Split(',')
                 .Select(e => e.Trim().Split(';').First());
             var acceptedEncodings = (acceptedEncodingsEnumerable != null)
@@ -413,7 +411,7 @@ namespace Smuxi.Frontend.Http
                     using (var zipper = new GZipStream(ms, CompressionMode.Compress)) {
                         zipper.Write(body, 0, body.Length);
                     }
-                    ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
+                    ctx.Response.Headers["Content-Encoding"] = "gzip";
                     bytesToSend = ms.ToArray();
                 }
             } else if (acceptedEncodings.Contains("deflate")) {
@@ -421,18 +419,18 @@ namespace Smuxi.Frontend.Http
                     using (var deflater = new DeflateStream(ms, CompressionMode.Compress)) {
                         deflater.Write(body, 0, body.Length);
                     }
-                    ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
+                    ctx.Response.Headers["Content-Encoding"] = "deflate";
                     bytesToSend = ms.ToArray();
                 }
             } else {
-                ctx.Response.Headers[HttpResponseHeader.ContentEncoding] = "identity";
+                ctx.Response.Headers["Content-Encoding"] = "identity";
                 bytesToSend = body;
             }
 
-            ctx.Response.Close(bytesToSend, willBlock: false);
+            ctx.Response.Body.Write(bytesToSend, 0, bytesToSend.Length);
         }
 
-        protected virtual bool AssertLoggedIn(HttpListenerContext ctx)
+        protected virtual bool AssertLoggedIn(HttpContext ctx)
         {
             if (Authenticator.CheckAuthenticated(ctx)) {
                 // OK

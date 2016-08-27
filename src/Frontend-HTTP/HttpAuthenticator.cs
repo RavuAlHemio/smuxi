@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 
 namespace Smuxi.Frontend.Http
 {
@@ -17,19 +18,19 @@ namespace Smuxi.Frontend.Http
             CurrentSessionToken = null;
         }
 
-        public bool CheckAuthenticated(HttpListenerContext ctx)
+        public bool CheckAuthenticated(HttpContext ctx)
         {
             // verify session cookie
-            Cookie authCookie = ctx.Request.Cookies[CookieName];
+            string authCookie = ctx.Request.Cookies[CookieName];
             if (authCookie != null) {
-                if (authCookie.Value == CurrentSessionToken) {
+                if (authCookie == CurrentSessionToken) {
                     return true;
                 }
             }
 
             // check for token; this makes quick "login by navigating to a bookmark" tricks possible
             // and allowing users to revoke tokens for stolen devices etc.
-            Uri url = HttpUtil.GetHttpListenerRequestUri(ctx.Request);
+            Uri url = new Uri(ctx.Request.GetEncodedUrl());
             string queryString = url.Query;
             if (queryString.StartsWith("?")) {
                 Dictionary<string, string> query = HttpUtil.DecodeUrlEncodedForm(queryString.Substring(1));
@@ -56,7 +57,7 @@ namespace Smuxi.Frontend.Http
             return false;
         }
 
-        public bool Login(HttpListenerResponse response, string username, string password)
+        public bool Login(HttpResponse response, string username, string password)
         {
             var expectedUsername = Frontend.FrontendConfig[Frontend.UIName + "/Username"] as string;
             var expectedPassword = Frontend.FrontendConfig[Frontend.UIName + "/Password"] as string;
@@ -83,7 +84,7 @@ namespace Smuxi.Frontend.Http
         /// <paramref name="queryString"/> must be supplied without the
         /// leading question mark, if any.
         /// </remarks>
-        public bool Login(HttpListenerResponse response, string queryString)
+        public bool Login(HttpResponse response, string queryString)
         {
             Dictionary<string, string> query = HttpUtil.DecodeUrlEncodedForm(queryString);
             if (!query.ContainsKey("username") || !query.ContainsKey("password")) {
@@ -99,12 +100,10 @@ namespace Smuxi.Frontend.Http
             CurrentSessionToken = null;
         }
 
-        protected void SetSessionCookie(HttpListenerResponse response)
+        protected void SetSessionCookie(HttpResponse response)
         {
             string sessionToken = ObtainSessionToken();
-
-            var cookie = new Cookie(CookieName, sessionToken);
-            response.SetCookie(cookie);
+            response.Cookies.Append(CookieName, sessionToken);
         }
 
         protected string ObtainSessionToken()
