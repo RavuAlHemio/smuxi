@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using DotLiquid;
 using RavuAlHemio.HttpDispatcher;
+using RavuAlHemio.HttpDispatcher.Kestrel;
 using Smuxi.Common;
 using Smuxi.Engine;
 using Smuxi.Frontend.Http.Drops;
@@ -26,7 +27,7 @@ namespace Smuxi.Frontend.Http
         public List<ChatModel> Chats { get; }
         public CommandManager CommandManager { get; set; }
         public Dictionary<string, string> ExtensionsToMimeTypes { get; }
-        public DistributingHttpListener Listener { get; set; }
+        public DistributingKestrelServer Kestrel { get; set; }
         public Templates Templates { get; set; }
         public int Version => 0;
 
@@ -40,14 +41,14 @@ namespace Smuxi.Frontend.Http
                 [".css"] = "text/css",
                 [".js"] = "text/javascript"
             };
-            Listener = new DistributingHttpListener(uriPrefix);
-            Listener.AddResponder(this);
+            Kestrel = new DistributingKestrelServer(uriPrefix);
+            Kestrel.AddResponder(this);
             Templates = new Templates();
         }
 
         public void Start()
         {
-            Listener.Start();
+            Kestrel.Start();
         }
 
         public void AddChat(ChatModel chat)
