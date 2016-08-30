@@ -40,8 +40,14 @@ namespace Smuxi.Frontend.Http
                 [".css"] = "text/css",
                 [".js"] = "text/javascript"
             };
+
             Listener = new DistributingHttpListener(uriPrefix);
             Listener.AddResponder(this);
+            Listener.ResponderException += (sender, args) =>
+            {
+                Logger.Error("exception thrown while handling request", args.Exception);
+            };
+
             Templates = new Templates();
         }
 
