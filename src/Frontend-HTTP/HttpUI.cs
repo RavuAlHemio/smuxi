@@ -22,8 +22,9 @@ namespace Smuxi.Frontend.Http
         private static readonly LogHelper Logger = new LogHelper(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected HttpAuthenticator Authenticator { get; }
-        public Dictionary<ChatModel, HttpChat> ChatFrontends { get; }
-        public List<ChatModel> Chats { get; }
+        protected Dictionary<ChatModel, HttpChat> ChatFrontends { get; }
+        protected List<ChatModel> Chats { get; }
+        protected object CollectionLock { get; }
         public CommandManager CommandManager { get; set; }
         public Dictionary<string, string> ExtensionsToMimeTypes { get; }
         public DistributingHttpListener Listener { get; set; }
@@ -35,6 +36,7 @@ namespace Smuxi.Frontend.Http
             Authenticator = new HttpAuthenticator();
             ChatFrontends = new Dictionary<ChatModel, HttpChat>();
             Chats = new List<ChatModel>();
+            CollectionLock = new object();
             ExtensionsToMimeTypes = new Dictionary<string, string>
             {
                 [".css"] = "text/css",
@@ -59,18 +61,20 @@ namespace Smuxi.Frontend.Http
         public void AddChat(ChatModel chat)
         {
             Trace.Call(chat);
-            Chats.Add(chat);
-            ChatFrontends[chat] = new HttpChat
-            {
-                Name = chat.Name,
-                IsSystemChat = (chat.ChatType == ChatType.Session
-                                || chat.ChatType == ChatType.Protocol)
-            };
+            lock (CollectionLock) {
+                Chats.Add(chat);
+                ChatFrontends[chat] = new HttpChat
+                {
+                    Name = chat.Name,
+                    IsSystemChat = (chat.ChatType == ChatType.Session
+                                    || chat.ChatType == ChatType.Protocol)
+                };
 
-            var groupChat = chat as GroupChatModel;
-            if (groupChat != null) {
-                ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
-                ChatFrontends[chat].UpdateTopic(groupChat.Topic);
+                var groupChat = chat as GroupChatModel;
+                if (groupChat != null) {
+                    ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                    ChatFrontends[chat].UpdateTopic(groupChat.Topic);
+                }
             }
         }
 
@@ -87,25 +91,31 @@ namespace Smuxi.Frontend.Http
         public void AddMessageToChat(ChatModel chat, MessageModel msg)
         {
             Trace.Call(chat, msg);
-            ChatFrontends[chat].AddMessage(msg);
+
+            FrontendForChat(chat).AddMessage(msg);
         }
 
         public void RemoveChat(ChatModel chat)
         {
             Trace.Call(chat);
-            Chats.Remove(chat);
-            ChatFrontends.Remove(chat);
+
+            lock (CollectionLock) {
+                Chats.Remove(chat);
+                ChatFrontends.Remove(chat);
+            }
         }
 
         public void SyncChat(ChatModel chat)
         {
             Trace.Call(chat);
 
-            ChatFrontends[chat].ReplaceAllMessages(chat.Messages);
+            HttpChat frontend = FrontendForChat(chat);
+
+            frontend.ReplaceAllMessages(chat.Messages);
 
             var groupChat = chat as GroupChatModel;
             if (groupChat != null) {
-                ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                frontend.ReplaceAllParticipants(groupChat.Persons.Values);
             }
             Frontend.FrontendManager.AddSyncedChat(chat);
         }
@@ -114,7 +124,7 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(groupChat, person);
 
-            ChatFrontends[groupChat].AddParticipant(person);
+            FrontendForChat(groupChat).AddParticipant(person);
         }
 
         public void UpdatePersonInGroupChat(GroupChatModel groupChat, PersonModel oldPerson,
@@ -122,7 +132,7 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(groupChat, oldPerson, newPerson);
 
-            HttpChat frontend = ChatFrontends[groupChat];
+            HttpChat frontend = FrontendForChat(groupChat);
             frontend.RemoveParticipant(oldPerson);
             frontend.AddParticipant(newPerson);
         }
@@ -131,14 +141,14 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(groupChat, topic);
 
-            ChatFrontends[groupChat].UpdateTopic(topic);
+            FrontendForChat(groupChat).UpdateTopic(topic);
         }
 
         public void RemovePersonFromGroupChat(GroupChatModel groupChat, PersonModel person)
         {
             Trace.Call(groupChat, person);
 
-            ChatFrontends[groupChat].RemoveParticipant(person);
+            FrontendForChat(groupChat).RemoveParticipant(person);
         }
 
         public void SetNetworkStatus(string status)
@@ -158,9 +168,12 @@ namespace Smuxi.Frontend.Http
                 return;
             }
 
-            List<ChatTabDrop> chats = Chats
-                .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
-                .ToList();
+            List<ChatTabDrop> chats;
+            lock (CollectionLock) {
+                chats = Chats
+                    .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
+                    .ToList();
+            }
             string result = Templates.LandingPage.Render(Hash.FromAnonymousObject(new
             {
                 chat_tabs = chats
@@ -176,21 +189,32 @@ namespace Smuxi.Frontend.Http
                 return;
             }
 
-            if (chatIndex < 0 || chatIndex >= Chats.Count) {
+            int chatCount;
+            HttpChat httpChat;
+            List<ChatTabDrop> chats, highlightedChats;
+
+            lock (CollectionLock) {
+                chatCount = Chats.Count;
+            }
+
+            if (chatIndex < 0 || chatIndex >= chatCount) {
                 ReturnNotFound(ctx);
                 return;
             }
 
-            HttpChat chat = ChatFrontends[Chats[chatIndex]];
-            ChatDrop chatDrop = new ChatDrop(chat);
-            List<ChatTabDrop> chats = Chats
-                .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
-                .ToList();
-            List<ChatTabDrop> highlightedChats = Chats
-                .Select((c, i) => Tuple.Create(ChatFrontends[c], i))
-                .Where(t => t.Item1.UnseenHighlightMessages > 0)
-                .Select(t => new ChatTabDrop(t.Item2, t.Item1))
-                .ToList();
+            lock (CollectionLock) {
+                httpChat = ChatFrontends[Chats[chatIndex]];
+                chats = Chats
+                    .Select((c, i) => new ChatTabDrop(i, ChatFrontends[c]))
+                    .ToList();
+                highlightedChats = Chats
+                    .Select((c, i) => Tuple.Create(ChatFrontends[c], i))
+                    .Where(t => t.Item1.UnseenHighlightMessages > 0)
+                    .Select(t => new ChatTabDrop(t.Item2, t.Item1))
+                    .ToList();
+            }
+
+            ChatDrop chatDrop = new ChatDrop(httpChat);
 
             string result = Templates.ChatPage.Render(Hash.FromAnonymousObject(new
             {
@@ -210,12 +234,21 @@ namespace Smuxi.Frontend.Http
                 return;
             }
 
-            if (chatIndex < 0 || chatIndex >= Chats.Count) {
+            int chatCount;
+            ChatModel chat;
+
+            lock (CollectionLock) {
+                chatCount = Chats.Count;
+            }
+
+            if (chatIndex < 0 || chatIndex >= chatCount) {
                 ReturnNotFound(ctx);
                 return;
             }
 
-            ChatModel chat = Chats[chatIndex];
+            lock (CollectionLock) {
+                chat = Chats[chatIndex];
+            }
 
             string query = ReadRequestBody(ctx.Request.InputStream);
             Dictionary<string, string> keysValues = HttpUtil.DecodeUrlEncodedForm(query);
@@ -249,17 +282,27 @@ namespace Smuxi.Frontend.Http
                 return;
             }
 
-            if (chatIndex < 0 || chatIndex >= Chats.Count) {
+            int chatCount;
+            HttpChat httpChat;
+
+            lock (CollectionLock) {
+                chatCount = Chats.Count;
+            }
+
+            if (chatIndex < 0 || chatIndex >= chatCount) {
                 ReturnNotFound(ctx);
                 return;
             }
 
-            HttpChat chat = ChatFrontends[Chats[chatIndex]];
-            ChatDrop chatDrop = new ChatDrop(chat);
+            lock (CollectionLock) {
+                httpChat = ChatFrontends[Chats[chatIndex]];
+            }
+
+            ChatDrop chatDrop = new ChatDrop(httpChat);
 
             // mark messages of this chat as seen
-            chat.UnseenMessages = 0;
-            chat.UnseenHighlightMessages = 0;
+            httpChat.UnseenMessages = 0;
+            httpChat.UnseenHighlightMessages = 0;
 
             ReturnHtml(ctx, String.Concat(chatDrop.Messages));
         }
@@ -470,7 +513,11 @@ namespace Smuxi.Frontend.Http
 
         protected virtual void ProcessCommandHelp(CommandModel command)
         {
-            HttpChat httpChat = ChatFrontends[command.Chat];
+            HttpChat httpChat;
+            lock (CollectionLock) {
+                httpChat = ChatFrontends[command.Chat];
+            }
+            
             var builder = new MessageBuilder();
             // TRANSLATOR: this line is used as a label / category for a
             // list of commands below
@@ -510,6 +557,15 @@ namespace Smuxi.Frontend.Http
         protected virtual void ProcessCommandReloadTemplates(CommandModel command)
         {
             Templates.LoadTemplates();
+        }
+
+        protected HttpChat FrontendForChat(ChatModel chat)
+        {
+            HttpChat frontend;
+            lock (CollectionLock) {
+                frontend = ChatFrontends[chat];
+            }
+            return frontend;
         }
 
         static string _(string msg)
