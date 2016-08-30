@@ -72,7 +72,9 @@ namespace Smuxi.Frontend.Http
 
                 var groupChat = chat as GroupChatModel;
                 if (groupChat != null) {
-                    ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                    if (groupChat.Persons != null) {
+                        ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                    }
                     ChatFrontends[chat].UpdateTopic(groupChat.Topic);
                 }
             }
