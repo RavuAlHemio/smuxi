@@ -29,5 +29,16 @@ namespace Smuxi.Frontend.Http
             // {"one": "a", "two": "b", "three": "c=d", "four": null}
             return keysValues;
         }
+
+        public static Uri GetHttpListenerRequestUri(HttpListenerRequest request)
+        {
+            // get current URL
+            var currentUrlString = new StringBuilder();
+            currentUrlString.Append(request.IsSecureConnection ? "https" : "http");
+            currentUrlString.Append("://");
+            currentUrlString.Append(request.UserHostName ?? request.UserHostAddress);
+            currentUrlString.Append(request.RawUrl);
+            return new Uri(currentUrlString.ToString());
+        }
     }
 }
