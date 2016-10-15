@@ -95,6 +95,7 @@ namespace Smuxi.Frontend.Http
         public void Clear()
         {
             ElementCount = 0;
+            FirstIndexIfFull = 0;
             for (int i = 0; i < BackingArray.Length; ++i) {
                 BackingArray[i] = default(T);
             }
