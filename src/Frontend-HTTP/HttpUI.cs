@@ -61,22 +61,26 @@ namespace Smuxi.Frontend.Http
         public void AddChat(ChatModel chat)
         {
             Trace.Call(chat);
-            lock (CollectionLock) {
-                Chats.Add(chat);
-                ChatFrontends[chat] = new HttpChat
-                {
-                    Name = chat.Name,
-                    IsSystemChat = (chat.ChatType == ChatType.Session
-                                    || chat.ChatType == ChatType.Protocol)
-                };
+            try {
+                lock (CollectionLock) {
+                    Chats.Add(chat);
+                    ChatFrontends[chat] = new HttpChat
+                    {
+                        Name = chat.Name,
+                        IsSystemChat = (chat.ChatType == ChatType.Session
+                                        || chat.ChatType == ChatType.Protocol)
+                    };
 
-                var groupChat = chat as GroupChatModel;
-                if (groupChat != null) {
-                    if (groupChat.Persons != null) {
-                        ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                    var groupChat = chat as GroupChatModel;
+                    if (groupChat != null) {
+                        if (groupChat.Persons != null) {
+                            ChatFrontends[chat].ReplaceAllParticipants(groupChat.Persons.Values);
+                        }
+                        ChatFrontends[chat].UpdateTopic(groupChat.Topic);
                     }
-                    ChatFrontends[chat].UpdateTopic(groupChat.Topic);
                 }
+            } catch (Exception exc) {
+                Logger.Error("exception when adding chat", exc);
             }
         }
 
@@ -94,16 +98,24 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(chat, msg);
 
-            FrontendForChat(chat).AddMessage(msg);
+            try {
+                FrontendForChat(chat).AddMessage(msg);
+            } catch (Exception exc) {
+                Logger.Error("exception when adding message to chat", exc);
+            }
         }
 
         public void RemoveChat(ChatModel chat)
         {
             Trace.Call(chat);
 
-            lock (CollectionLock) {
-                Chats.Remove(chat);
-                ChatFrontends.Remove(chat);
+            try {
+                lock (CollectionLock) {
+                    Chats.Remove(chat);
+                    ChatFrontends.Remove(chat);
+                }
+            } catch (Exception exc) {
+                Logger.Error("exception when removing message from chat", exc);
             }
         }
 
@@ -111,22 +123,30 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(chat);
 
-            HttpChat frontend = FrontendForChat(chat);
+            try {
+                HttpChat frontend = FrontendForChat(chat);
 
-            frontend.ReplaceAllMessages(chat.Messages);
+                frontend.ReplaceAllMessages(chat.Messages);
 
-            var groupChat = chat as GroupChatModel;
-            if (groupChat != null) {
-                frontend.ReplaceAllParticipants(groupChat.Persons.Values);
+                var groupChat = chat as GroupChatModel;
+                if (groupChat != null) {
+                    frontend.ReplaceAllParticipants(groupChat.Persons.Values);
+                }
+                Frontend.FrontendManager.AddSyncedChat(chat);
+            } catch (Exception exc) {
+                Logger.Error("exception when syncing chat", exc);
             }
-            Frontend.FrontendManager.AddSyncedChat(chat);
         }
 
         public void AddPersonToGroupChat(GroupChatModel groupChat, PersonModel person)
         {
             Trace.Call(groupChat, person);
 
-            FrontendForChat(groupChat).AddParticipant(person);
+            try {
+                FrontendForChat(groupChat).AddParticipant(person);
+            } catch (Exception exc) {
+                Logger.Error("exception when adding person to group chat", exc);
+            }
         }
 
         public void UpdatePersonInGroupChat(GroupChatModel groupChat, PersonModel oldPerson,
@@ -134,23 +154,35 @@ namespace Smuxi.Frontend.Http
         {
             Trace.Call(groupChat, oldPerson, newPerson);
 
-            HttpChat frontend = FrontendForChat(groupChat);
-            frontend.RemoveParticipant(oldPerson);
-            frontend.AddParticipant(newPerson);
+            try {
+                HttpChat frontend = FrontendForChat(groupChat);
+                frontend.RemoveParticipant(oldPerson);
+                frontend.AddParticipant(newPerson);
+            } catch (Exception exc) {
+                Logger.Error("exception when updating person in group chat", exc);
+            }
         }
 
         public void UpdateTopicInGroupChat(GroupChatModel groupChat, MessageModel topic)
         {
             Trace.Call(groupChat, topic);
 
-            FrontendForChat(groupChat).UpdateTopic(topic);
+            try {
+                FrontendForChat(groupChat).UpdateTopic(topic);
+            } catch (Exception exc) {
+                Logger.Error("exception when updating topic in group chat", exc);
+            }
         }
 
         public void RemovePersonFromGroupChat(GroupChatModel groupChat, PersonModel person)
         {
             Trace.Call(groupChat, person);
 
-            FrontendForChat(groupChat).RemoveParticipant(person);
+            try {
+                FrontendForChat(groupChat).RemoveParticipant(person);
+            } catch (Exception exc) {
+                Logger.Error("exception when removing person from group chat", exc);
+            }
         }
 
         public void SetNetworkStatus(string status)
