@@ -20,7 +20,7 @@ namespace Smuxi.Frontend.Http
         public int UnseenHighlightMessages { get; set; }
         public bool IsSystemChat { get; set; }
 
-        protected static readonly Regex BreakOpportunityRegex = new Regex("[?/#]|&amp;", RegexOptions.Compiled);
+        protected static readonly Regex BreakOpportunityRegex = new Regex("[?/#]|&amp;|%(?i:2F|26)", RegexOptions.Compiled);
 
         public HttpChat()
         {
