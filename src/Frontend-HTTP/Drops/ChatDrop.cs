@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using DotLiquid;
 
 namespace Smuxi.Frontend.Http.Drops
@@ -11,9 +12,9 @@ namespace Smuxi.Frontend.Http.Drops
         {
             get
             {
-                List<string> messages = Chat.GetHtmlMessages();
+                List<KeyValuePair<long, string>> messages = Chat.GetHtmlMessages();
                 messages.Reverse();
-                return messages;
+                return messages.Select(m => m.Value);
             }
         }
 

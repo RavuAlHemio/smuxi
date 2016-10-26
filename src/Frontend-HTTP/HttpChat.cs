@@ -13,30 +13,35 @@ namespace Smuxi.Frontend.Http
     {
         protected object CollectionsLock { get; }
         public string Name { get; set; }
-        protected CircleBuffer<string> HtmlMessages { get; set; }
+        protected CircleBuffer<KeyValuePair<long, string>> HtmlMessages { get; set; }
         public string HtmlTopic { get; protected set; }
         protected SortedDictionary<string, string> ParticipantNamesToHtmlNames { get; set; }
         public int UnseenMessages { get; set; }
         public int UnseenHighlightMessages { get; set; }
         public bool IsSystemChat { get; set; }
+        public long NextMessageID { get; protected set; }
+        public long MessagesEpoch { get; protected set; }
 
         protected static readonly Regex BreakOpportunityRegex = new Regex("[?/#]|&amp;|%(?i:2F|26)", RegexOptions.Compiled);
 
         public HttpChat()
         {
             CollectionsLock = new object();
-            HtmlMessages = new CircleBuffer<string>(512);
+            HtmlMessages = new CircleBuffer<KeyValuePair<long, string>>(512);
             HtmlTopic = null;
             ParticipantNamesToHtmlNames = null;
             UnseenMessages = 0;
             UnseenHighlightMessages = 0;
             IsSystemChat = false;
+            NextMessageID = 0;
+            MessagesEpoch = 0;
         }
 
         public void AddMessage(MessageModel message)
         {
             lock (CollectionsLock) {
-                HtmlMessages.Add(TransformMessage(message));
+                HtmlMessages.Add(Wrap(NextMessageID, TransformMessage(message)));
+                ++NextMessageID;
             }
 
             if (message.MessageType == MessageType.Normal) {
@@ -67,8 +72,14 @@ namespace Smuxi.Frontend.Http
         public void ReplaceAllMessages(IEnumerable<MessageModel> messages)
         {
             lock (CollectionsLock) {
+                ++MessagesEpoch;
+                NextMessageID = 0;
+
                 HtmlMessages.Clear();
-                HtmlMessages.AddRange(messages.Select(m => TransformMessage(m)));
+                foreach (MessageModel message in messages) {
+                    HtmlMessages.Add(Wrap(NextMessageID, TransformMessage(message)));
+                ++NextMessageID;
+                }
             }
         }
 
@@ -103,10 +114,10 @@ namespace Smuxi.Frontend.Http
             HtmlTopic = TransformMessage(topic, includeTimestamp: false, divWrap: false);
         }
 
-        public List<string> GetHtmlMessages()
+        public List<KeyValuePair<long, string>> GetHtmlMessages()
         {
             lock (CollectionsLock) {
-                return new List<string>(HtmlMessages);
+                return new List<KeyValuePair<long, string>>(HtmlMessages);
             }
         }
 
@@ -250,6 +261,11 @@ namespace Smuxi.Frontend.Http
         public static string WithBreakOpportunities(string input)
         {
             return BreakOpportunityRegex.Replace(input, "<wbr/>$&");
+        }
+
+        protected static KeyValuePair<TKey, TValue> Wrap<TKey, TValue>(TKey id, TValue body)
+        {
+            return new KeyValuePair<TKey, TValue>(id, body);
         }
     }
 }

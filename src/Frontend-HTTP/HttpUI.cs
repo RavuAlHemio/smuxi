@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using DotLiquid;
+using Newtonsoft.Json.Linq;
 using RavuAlHemio.HttpDispatcher;
 using Smuxi.Common;
 using Smuxi.Engine;
@@ -341,6 +342,68 @@ namespace Smuxi.Frontend.Http
             ReturnHtml(ctx, String.Concat(chatDrop.Messages));
         }
 
+        [Endpoint("/{chatIndex}/messages.json", Method = "GET")]
+        [Endpoint("/{chatIndex}/messages/epoch/{epoch}/since/{firstMessageID}.json", Method = "GET")]
+        public void MessagesJsonSelection(HttpListenerContext ctx, int chatIndex, long epoch = -1, long firstMessageID = 0)
+        {
+            if (!AssertLoggedIn(ctx)) {
+                return;
+            }
+
+            int chatCount;
+            HttpChat httpChat;
+
+            lock (CollectionLock) {
+                chatCount = Chats.Count;
+            }
+
+            if (chatIndex < 0 || chatIndex >= chatCount) {
+                ReturnNotFound(ctx);
+                return;
+            }
+
+            lock (CollectionLock) {
+                httpChat = ChatFrontends[Chats[chatIndex]];
+            }
+
+            List<KeyValuePair<long, string>> htmlMessages;
+            if (epoch > httpChat.MessagesEpoch)
+            {
+                // nothing new
+                htmlMessages = new List<KeyValuePair<long, string>>();
+            }
+            else
+            {
+                htmlMessages = httpChat.GetHtmlMessages();
+
+                if (epoch == httpChat.MessagesEpoch)
+                {
+                    // remove messages we already have
+                    htmlMessages.RemoveAll(m => m.Key < firstMessageID);
+                }
+            }
+
+            var ret = new JObject
+            {
+                {"epoch", new JValue(httpChat.MessagesEpoch)},
+                {"nextID", new JValue(httpChat.NextMessageID)},
+                {"messages", new JArray(
+                    httpChat.GetHtmlMessages()
+                        .Select(m => new JObject
+                        {
+                            {"id", new JValue(m.Key)},
+                            {"body", new JValue(m.Value)}
+                        })
+                )}
+            };
+
+            // mark messages of this chat as seen
+            httpChat.UnseenMessages = 0;
+            httpChat.UnseenHighlightMessages = 0;
+
+            ReturnJson(ctx, ret);
+        }
+
         [Endpoint("/static/{fileName}", Method = "GET")]
         public void StaticFile(HttpListenerContext ctx, string fileName)
         {
@@ -455,6 +518,16 @@ namespace Smuxi.Frontend.Http
             ctx.Response.StatusCode = code;
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.ContentType = "text/html; charset=utf-8";
+            CompressWriteCloseResponse(ctx, bytes);
+        }
+
+        protected static void ReturnJson(HttpListenerContext ctx, JToken json, int code = 200)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(json.ToString());
+
+            ctx.Response.StatusCode = code;
+            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.ContentType = "application/json";
             CompressWriteCloseResponse(ctx, bytes);
         }
 
