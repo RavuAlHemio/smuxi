@@ -35,7 +35,7 @@
         var location: Location = window.location;
         // http://localhost:1234/12 -> http://localhost:1234/12/messages/epoch/1/since/1337.json
         var endpoint: string =
-            `${location.protocol}//${location.host}${location.pathname}/messages/epoch/${messageEpoch}/since/${nextMessageID}.json${location.search}`;
+            `${location.protocol}//${location.host}${location.pathname}/epoch/${messageEpoch}/since/${nextMessageID}/messages.json${location.search}`;
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET", endpoint, true);

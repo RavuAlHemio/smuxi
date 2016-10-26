@@ -343,7 +343,7 @@ namespace Smuxi.Frontend.Http
         }
 
         [Endpoint("/{chatIndex}/messages.json", Method = "GET")]
-        [Endpoint("/{chatIndex}/messages/epoch/{epoch}/since/{firstMessageID}.json", Method = "GET")]
+        [Endpoint("/{chatIndex}/epoch/{epoch}/since/{firstMessageID}/messages.json", Method = "GET")]
         public void MessagesJsonSelection(HttpListenerContext ctx, int chatIndex, long epoch = -1, long firstMessageID = 0)
         {
             if (!AssertLoggedIn(ctx)) {
