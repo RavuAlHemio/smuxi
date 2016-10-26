@@ -39,14 +39,21 @@
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET", endpoint, true);
-        xhr.addEventListener("loadend", () => messagesFetched(xhr));
+        xhr.addEventListener("load", () => messagesFetched(xhr));
+        xhr.addEventListener("loadend", loadingDone);
         xhr.send();
     }
 
-    function messagesFetched(xhr: XMLHttpRequest): void {
+    function loadingDone(): void {
         messageUpdateRunning = false;
+    }
 
+    function messagesFetched(xhr: XMLHttpRequest): void {
         var response: MessagesResponse = JSON.parse(xhr.response);
+        if (response.epoch === undefined || response.nextID === undefined) {
+            return;
+        }
+
         messageEpoch = response.epoch;
         nextMessageID = response.nextID;
 
