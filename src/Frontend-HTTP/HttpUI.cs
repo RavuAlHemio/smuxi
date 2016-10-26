@@ -388,12 +388,11 @@ namespace Smuxi.Frontend.Http
                 {"epoch", new JValue(httpChat.MessagesEpoch)},
                 {"nextID", new JValue(httpChat.NextMessageID)},
                 {"messages", new JArray(
-                    httpChat.GetHtmlMessages()
-                        .Select(m => new JObject
-                        {
-                            {"id", new JValue(m.Key)},
-                            {"body", new JValue(m.Value)}
-                        })
+                    htmlMessages.Select(m => new JObject
+                    {
+                        {"id", new JValue(m.Key)},
+                        {"body", new JValue(m.Value)}
+                    })
                 )}
             };
 
