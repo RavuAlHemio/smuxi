@@ -1,5 +1,8 @@
 {% extends "base" %}
 {% block title %}{{ chat.name | escape }} &ndash; Smuxi{% endblock %}
+{% block head %}
+    <meta name="smuxi:chat" content="{{ chat.name | escape }}" />
+{% endblock %}
 {% block body %}
     {% assign chats_section_id = 'highlighted-chats' %}
     {% assign chats_to_list = highlighted_chat_tabs %}
@@ -29,5 +32,6 @@
     {% include "chats" %}
     <script type="text/javascript">
       Smuxi.initMessageRefresh();
+      Smuxi.initNotifications();
     </script>
 {% endblock %}

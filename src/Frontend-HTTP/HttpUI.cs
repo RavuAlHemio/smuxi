@@ -393,7 +393,8 @@ namespace Smuxi.Frontend.Http
                         {"id", new JValue(m.Key)},
                         {"body", new JValue(m.Value)}
                     })
-                )}
+                )},
+                {"highlighted", new JValue(httpChat.UnseenHighlightMessages > 0)}
             };
 
             // mark messages of this chat as seen
