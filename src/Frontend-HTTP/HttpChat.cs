@@ -22,7 +22,7 @@ namespace Smuxi.Frontend.Http
         public long NextMessageID { get; protected set; }
         public long MessagesEpoch { get; protected set; }
 
-        protected static readonly Regex BreakOpportunityRegex = new Regex("[?/#_]|&amp;|%(?i:2F|26)", RegexOptions.Compiled);
+        protected static readonly Regex BreakOpportunityRegex = new Regex("[?!/#_]|&amp;|%(?i:2F|26)", RegexOptions.Compiled);
 
         public HttpChat()
         {
