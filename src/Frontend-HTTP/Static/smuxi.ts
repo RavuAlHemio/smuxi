@@ -1,32 +1,4 @@
-﻿interface Window {
-    Notification?: NotificationInterface;
-}
-
-interface NotificationInterface {
-    requestPermission(): PromiseLike<void>;
-}
-
-interface NotificationOptions {
-    dir?: "auto"|"ltr"|"rtl";
-    lang?: string;
-    badge?: string;
-    body?: string;
-    tag?: string;
-    icon?: string;
-    data?: any;
-    vibrate?: number[];
-    renotify?: boolean;
-    silent?: boolean;
-    sound?: string;
-    noscreen?: boolean;
-    sticky?: boolean;
-}
-
-declare class Notification {
-    constructor(title: string, options?: NotificationOptions);
-}
-
-module Smuxi {
+﻿module Smuxi {
     export var messageEpoch: number = -1;
     export var nextMessageID: number = -1;
     export var performMessageUpdate: boolean = true;
@@ -62,7 +34,7 @@ module Smuxi {
                 return;
             }
             chatName = (<HTMLMetaElement>document.head.querySelector("meta[name='smuxi:chat']")).content;
-            window.Notification.requestPermission().then(function () {
+            Notification.requestPermission().then(function () {
                 notifyOnHighlight = true;
             });
         });
