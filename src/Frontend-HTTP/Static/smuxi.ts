@@ -34,6 +34,7 @@ module Smuxi {
     var messageUpdateRunning: boolean = false;
     var firstFetch: boolean = true;
     var chatName: string;
+    var updateIntervalHandle: number;
 
     interface MessagesResponse {
         epoch: number;
@@ -51,7 +52,7 @@ module Smuxi {
         document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('message-input').focus();
             updateMessages();
-            window.setInterval(updateMessages, 5000);
+            updateIntervalHandle = window.setInterval(updateMessages, 5000);
         });
     }
 
@@ -65,6 +66,11 @@ module Smuxi {
                 notifyOnHighlight = true;
             });
         });
+    }
+
+    export function changeInterval(interval: number): void {
+        window.clearInterval(updateIntervalHandle);
+        updateIntervalHandle = window.setInterval(updateMessages, interval);
     }
 
     function updateMessages(): void {

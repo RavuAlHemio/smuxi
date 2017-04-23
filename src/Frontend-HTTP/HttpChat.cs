@@ -11,6 +11,8 @@ namespace Smuxi.Frontend.Http
 {
     public class HttpChat
     {
+        public string ChatID { get; }
+        public ChatModel Chat { get; }
         protected object CollectionsLock { get; }
         public string Name { get; set; }
         protected CircleBuffer<KeyValuePair<long, string>> HtmlMessages { get; set; }
@@ -24,8 +26,10 @@ namespace Smuxi.Frontend.Http
 
         protected static readonly Regex BreakOpportunityRegex = new Regex("[?!/#_]|&amp;|%(?i:2F|26)", RegexOptions.Compiled);
 
-        public HttpChat()
+        public HttpChat(ChatModel chat)
         {
+            ChatID = chat.ID;
+            Chat = chat;
             CollectionsLock = new object();
             HtmlMessages = new CircleBuffer<KeyValuePair<long, string>>(512);
             HtmlTopic = null;
